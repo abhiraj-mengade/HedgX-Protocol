@@ -1,5 +1,4 @@
 import { ethers } from "ethers";
-import { createZGComputeNetworkBroker } from "@0glabs/0g-serving-broker";
 import { NextRequest, NextResponse } from "next/server";
 
 const ZG_RPC_URL = "https://evmrpc-testnet.0g.ai";
@@ -47,7 +46,8 @@ Short-term floating rates are expected to increase by 0.25-0.5% over the next 30
       }, { status: 200 });
     }
 
-    // Initialize 0G broker
+    // Initialize 0G broker with dynamic import
+    const { createZGComputeNetworkBroker } = await import("@0glabs/0g-serving-broker");
     const provider = new ethers.JsonRpcProvider(ZG_RPC_URL);
     const wallet = new ethers.Wallet(privateKey, provider);
     const broker = await createZGComputeNetworkBroker(wallet);

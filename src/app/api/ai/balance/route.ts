@@ -1,5 +1,4 @@
 import { ethers } from "ethers";
-import { createZGComputeNetworkBroker } from "@0glabs/0g-serving-broker";
 import { NextResponse } from "next/server";
 
 const ZG_RPC_URL = "https://evmrpc-testnet.0g.ai";
@@ -18,7 +17,8 @@ export async function GET() {
       });
     }
 
-    // Initialize 0G broker
+    // Initialize 0G broker with dynamic import
+    const { createZGComputeNetworkBroker } = await import("@0glabs/0g-serving-broker");
     const provider = new ethers.JsonRpcProvider(ZG_RPC_URL);
     const wallet = new ethers.Wallet(privateKey, provider);
     const broker = await createZGComputeNetworkBroker(wallet);
