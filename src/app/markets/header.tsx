@@ -1,9 +1,21 @@
+"use client";
+
 import { ConnectButton, darkTheme } from "thirdweb/react";
 import { client } from "../client";
 import { sepolia } from "thirdweb/chains";
 import { CONTRACT_CONFIG } from "@/lib/config";
+import ChainSelector from "@/components/ChainSelector";
+import { useState } from "react";
 
 export default function Header() {
+  const [selectedChainId, setSelectedChainId] = useState(CONTRACT_CONFIG.CHAIN_ID);
+
+  const handleChainChange = (chainId: number) => {
+    setSelectedChainId(chainId);
+    // You can add logic here to update the wallet connection or contract configuration
+    // For now, we'll just update the local state
+  };
+
   return (
     <header className="flex items-center justify-between px-4 py-2 sticky top-0 bg-background h-16 z-20">
       <div className="flex items-center space-x-4">
@@ -11,9 +23,10 @@ export default function Header() {
           HedgX<span className="text-foreground">.</span>
         </h1>
         <div className="hidden md:flex items-center space-x-2 text-sm">
-          <div className="px-2 py-1 bg-green-500/20 text-green-400 rounded-md border border-green-500/30">
-            Sepolia Testnet
-          </div>
+          <ChainSelector 
+            selectedChainId={selectedChainId}
+            onChainChange={handleChainChange}
+          />
         </div>
       </div>
       <div>

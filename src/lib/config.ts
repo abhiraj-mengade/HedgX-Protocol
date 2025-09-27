@@ -10,6 +10,9 @@ export const CONTRACT_CONFIG = {
   RPC_URLS: {
     1: "https://eth.llamarpc.com", // Ethereum mainnet
     11155111: "https://ethereum-sepolia-rpc.publicnode.com", // Sepolia testnet
+    31: "https://public-node.testnet.rsk.co", // Rootstock Testnet
+    296: "https://testnet.hashio.io/api", // Hedera Testnet
+    1110001: "https://rpc.citrea.xyz", // Citrea Testnet (placeholder)
     31337: "http://localhost:8545", // Local development
   },
   
