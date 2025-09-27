@@ -17,29 +17,29 @@ const CHAINS: Chain[] = [
     name: "Sepolia Testnet",
     shortName: "Sepolia",
     rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
-    color: "green"
+    color: "green",
   },
   {
-    id: 1110001, // Citrea Testnet chain ID (placeholder)
+    id: 5115, // Citrea Testnet chain ID
     name: "Citrea Testnet",
     shortName: "Citrea",
-    rpcUrl: "https://rpc.citrea.xyz", // Placeholder RPC
-    color: "blue"
+    rpcUrl: "https://rpc.testnet.citrea.xyz",
+    color: "blue",
   },
   {
     id: 31, // Rootstock Testnet chain ID
     name: "Rootstock Testnet",
     shortName: "Rootstock",
     rpcUrl: "https://public-node.testnet.rsk.co",
-    color: "orange"
+    color: "orange",
   },
   {
     id: 296, // Hedera Testnet chain ID
     name: "Hedera Testnet",
     shortName: "Hedera",
-    rpcUrl: "https://testnet.hashio.io/api", // Placeholder RPC
-    color: "purple"
-  }
+    rpcUrl: "https://testnet.hashio.io/api", 
+    color: "purple",
+  },
 ];
 
 interface ChainSelectorProps {
@@ -49,9 +49,9 @@ interface ChainSelectorProps {
 
 export default function ChainSelector({ selectedChainId, onChainChange }: ChainSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
-  
+
   const selectedChain = CHAINS.find(chain => chain.id === selectedChainId) || CHAINS[0];
-  
+
   const getColorClasses = (color: string) => {
     switch (color) {
       case "green":
@@ -76,15 +76,15 @@ export default function ChainSelector({ selectedChainId, onChainChange }: ChainS
         <span>{selectedChain.shortName}</span>
         <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
-      
+
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-10" 
+          <div
+            className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          
+
           {/* Dropdown */}
           <div className="absolute top-full left-0 mt-1 bg-background border border-[rgba(189,238,99,0.2)] rounded-lg shadow-lg z-20 min-w-[180px]">
             {CHAINS.map((chain) => (
@@ -95,8 +95,8 @@ export default function ChainSelector({ selectedChainId, onChainChange }: ChainS
                   setIsOpen(false);
                 }}
                 className={`w-full text-left px-3 py-2 text-sm transition-colors duration-200 first:rounded-t-lg last:rounded-b-lg hover:bg-[rgba(189,238,99,0.1)] ${
-                  chain.id === selectedChainId 
-                    ? 'bg-[rgba(189,238,99,0.1)] text-[hsl(var(--primary))]' 
+                  chain.id === selectedChainId
+                    ? 'bg-[rgba(189,238,99,0.1)] text-[hsl(var(--primary))]'
                     : 'text-[hsl(var(--foreground))]'
                 }`}
               >

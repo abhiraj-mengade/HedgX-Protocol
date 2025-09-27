@@ -35,12 +35,7 @@ export default function CollateralTable({
             }}
           >
             <TableHead className="p-4 text-left text-[hsl(var(--foreground))] font-semibold">
-              <span
-                className="text-[hsl(var(--foreground))] font-semibold"
-                style={{
-                  textShadow: "0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--primary))",
-                }}
-              >
+              <span style={{ textShadow: "0px 0px 12px hsl(var(--primary))" }} className="text-[hsl(var(--foreground))] font-semibold">
                 {title}
               </span>
             </TableHead>

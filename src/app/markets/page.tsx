@@ -61,9 +61,7 @@ export default function Markets() {
     >
       <span
         className="text-[hsl(var(--foreground))] font-semibold"
-        style={{
-          textShadow: "0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--primary))",
-        }}
+        style={{ textShadow: "0px 0px 12px hsl(var(--primary))" }}
       >
         {market.type}
       </span>
@@ -89,9 +87,7 @@ export default function Markets() {
     >
       <span
         className="text-[hsl(var(--foreground))] font-semibold"
-        style={{
-          textShadow: "0 0 8px hsl(var(--secondary)), 0 0 16px hsl(var(--secondary))",
-        }}
+        style={{ textShadow: "0px 0px 12px hsl(var(--primary))" }}
       >
         {market.type}
       </span>

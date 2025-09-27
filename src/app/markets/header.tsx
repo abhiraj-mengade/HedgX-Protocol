@@ -1,17 +1,19 @@
 "use client";
 
-import { ConnectButton, darkTheme } from "thirdweb/react";
+import { ConnectButton, darkTheme, useSwitchActiveWalletChain } from "thirdweb/react";
 import { client } from "../client";
-import { sepolia } from "thirdweb/chains";
-import { CONTRACT_CONFIG } from "@/lib/config";
+import { defineChain, sepolia } from "thirdweb/chains";
+import { citrea_testnet, CONTRACT_CONFIG, hedera_testnet, rootstock_testnet } from "@/lib/config";
 import ChainSelector from "@/components/ChainSelector";
 import { useState } from "react";
 
 export default function Header() {
   const [selectedChainId, setSelectedChainId] = useState(CONTRACT_CONFIG.CHAIN_ID);
+  const switchChain = useSwitchActiveWalletChain();
 
   const handleChainChange = (chainId: number) => {
     setSelectedChainId(chainId);
+    switchChain(defineChain({ id: chainId, testnet: true }));
     // You can add logic here to update the wallet connection or contract configuration
     // For now, we'll just update the local state
   };
@@ -23,7 +25,7 @@ export default function Header() {
           HedgX<span className="text-foreground">.</span>
         </h1>
         <div className="hidden md:flex items-center space-x-2 text-sm">
-          <ChainSelector 
+          <ChainSelector
             selectedChainId={selectedChainId}
             onChainChange={handleChainChange}
           />
@@ -36,7 +38,7 @@ export default function Header() {
               primaryButtonBg: "hsl(var(--primary))",
             },
           })}
-          chains={[sepolia]}
+          chains={[sepolia, rootstock_testnet, citrea_testnet, hedera_testnet]}
           connectButton={{
             label: "Connect",
             style: {
@@ -55,10 +57,10 @@ export default function Header() {
             name: "HedgX Protocol",
             url: "https://hedgx-protocol.vercel.app",
           }}
-          chain={{
-            id: CONTRACT_CONFIG.CHAIN_ID,
-            rpc: CONTRACT_CONFIG.RPC_URLS[CONTRACT_CONFIG.CHAIN_ID as keyof typeof CONTRACT_CONFIG.RPC_URLS] || CONTRACT_CONFIG.RPC_URLS[11155111],
-          }}
+          // chain={{
+          //   id: CONTRACT_CONFIG.CHAIN_ID,
+          //   rpc: CONTRACT_CONFIG.RPC_URLS[CONTRACT_CONFIG.CHAIN_ID as keyof typeof CONTRACT_CONFIG.RPC_URLS] || CONTRACT_CONFIG.RPC_URLS[11155111],
+          // }}
         />
       </div>
     </header>

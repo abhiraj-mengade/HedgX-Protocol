@@ -204,9 +204,7 @@ export function SwapCard() {
                 <span className="text-[hsl(var(--muted-foreground))]">Implied Rate</span>
                 <span
                   className="text-[hsl(var(--primary))] font-bold"
-                  style={{
-                    textShadow: "0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--primary))",
-                  }}
+                  style={{ textShadow: "0px 0px 12px hsl(var(--primary))" }}
                 >
                   {formatBasisPoints(marketData.impliedRate)}
                 </span>
@@ -220,9 +218,7 @@ export function SwapCard() {
               <span>Exposure Amount (ETH)</span>
               <span
                 className="text-[hsl(var(--primary))] font-bold"
-                style={{
-                  textShadow: "0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--primary))",
-                }}
+                style={{ textShadow: "0px 0px 12px hsl(var(--primary))" }}
               >
                 {notionalSize || "0"} ETH
               </span>
@@ -271,17 +267,13 @@ export function SwapCard() {
               <div className="flex justify-between text-sm font-bold border-t border-[rgba(189,238,99,0.2)] pt-3 mt-3">
                 <span
                   className="text-[hsl(var(--primary))]"
-                  style={{
-                    textShadow: "0 0 8px hsl(var(--primary))",
-                  }}
+                  style={{ textShadow: "0px 0px 12px hsl(var(--primary))" }}
                 >
                   Total Cost
                 </span>
                 <span
                   className="text-[hsl(var(--primary))]"
-                  style={{
-                    textShadow: "0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--primary))",
-                  }}
+                  style={{ textShadow: "0px 0px 12px hsl(var(--primary))" }}
                 >
                   {formatETH(totalCost)}
                 </span>
