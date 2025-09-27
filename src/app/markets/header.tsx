@@ -21,7 +21,6 @@ export default function Header() {
           theme={darkTheme({
             colors: {
               primaryButtonBg: "hsl(var(--primary))",
-              connectedButtonBgHover: "hsl(var(--primary))",
             },
           })}
           chains={[sepolia]}

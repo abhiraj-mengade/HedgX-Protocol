@@ -50,7 +50,7 @@ export default function Markets() {
         }}
       >
         {market.type}
-      </span>{" "}
+      </span>
       <Link
         href={`/markets/${market.id}`}
         className="text-[hsl(var(--foreground))] hover:underline"
@@ -68,8 +68,13 @@ export default function Markets() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-[hsl(var(--primary))] text-lg">Loading market data...</div>
+      <div className="fixed inset-0 flex items-center justify-center bg-background z-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[hsl(var(--primary))]"></div>
+          <div className="text-[hsl(var(--primary))] text-xl animate-pulse">
+            Loading market data...
+          </div>
+        </div>
       </div>
     );
   }
