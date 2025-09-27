@@ -1,6 +1,7 @@
 import { ConnectButton, darkTheme } from "thirdweb/react";
 import { client } from "../client";
 import { sepolia } from "thirdweb/chains";
+import { CONTRACT_CONFIG } from "@/lib/config";
 
 export default function Header() {
   return (
