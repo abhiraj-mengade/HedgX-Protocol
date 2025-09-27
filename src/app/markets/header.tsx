@@ -1,5 +1,6 @@
 import { ConnectButton, darkTheme } from "thirdweb/react";
 import { client } from "../client";
+import { sepolia } from "thirdweb/chains";
 
 export default function Header() {
   return (
@@ -17,6 +18,7 @@ export default function Header() {
               connectedButtonBgHover: "hsl(var(--primary))",
             },
           })}
+          chains={[sepolia]}
           connectButton={{
             label: "Connect",
             style: {
