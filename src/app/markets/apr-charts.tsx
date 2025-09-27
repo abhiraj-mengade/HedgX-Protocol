@@ -1,6 +1,6 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis, ComposedChart } from "recharts";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -9,44 +9,100 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { useHistoricalData, useMarketData, useEthPrice } from "@/hooks/useHedgXVault";
+import { formatBasisPoints } from "@/lib/contract";
 
-export const description = "A multiple line chart";
-
-const generateMockData = () => {
-  const dates = ["23", "24", "25", "26", "27", "28", "29"];
-  const data = dates.map((date) => {
-    const impliedAPR = (Math.random() * (7 - 6) + 6).toFixed(2); // Random APR between 6 and 7
-    const underlyingAPR = (Math.random() * 11).toFixed(2); // Random APR between 0 and 11
-    return { date, impliedAPR: parseFloat(impliedAPR), underlyingAPR: parseFloat(underlyingAPR) };
-  });
-  return data;
-};
-
-const chartData = generateMockData();
+export const description = "A multiple line chart showing funding rates";
 
 const chartConfig = {
   impliedAPR: {
-    label: "Implied APR",
-    color: "var(--chart-1)",
+    label: "Implied Rate",
+    color: "hsl(var(--primary))",
   },
   underlyingAPR: {
-    label: "Underlying APR",
-    color: "var(--chart-2)",
+    label: "Funding Rate",
+    color: "hsl(var(--secondary))",
+  },
+  ethPrice: {
+    label: "ETH Price",
+    color: "#f59e0b", // amber-500
   },
 } satisfies ChartConfig;
 
 export function APRChart() {
+  const { historicalData, loading: historicalLoading } = useHistoricalData();
+  const { marketData, loading: marketLoading, error } = useMarketData();
+  const { ethPrice, loading: ethPriceLoading } = useEthPrice();
+
+  if (marketLoading || historicalLoading || ethPriceLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Funding Rates</CardTitle>
+          <CardDescription>Historical funding rate data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center text-[hsl(var(--primary))]">
+              Loading chart data...
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Funding Rates</CardTitle>
+          <CardDescription>Historical funding rate data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center text-red-400">
+              Error loading chart data: {error}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!historicalData || historicalData.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Funding Rates</CardTitle>
+          <CardDescription>Historical funding rate data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center text-zinc-400">
+              No chart data available
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>APR</CardTitle>
-        <CardDescription>Monthly APR</CardDescription>
+        <CardTitle>Funding Rates</CardTitle>
+        <CardDescription>
+          Current: Implied {formatBasisPoints(marketData?.impliedRate || 0n)} | 
+          Funding {formatBasisPoints(marketData?.currentFundingRateBps || 0n)} | 
+          ETH ${ethPrice?.toFixed(2) || '0.00'}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
-          <LineChart
+          <ComposedChart
             accessibilityLayer
-            data={chartData}
+            data={historicalData}
             margin={{
               left: 12,
               right: 12,
@@ -60,8 +116,33 @@ export function APRChart() {
               tickMargin={8}
               tickFormatter={(value) => value.slice(0, 3)}
             />
-            <ChartTooltip cursor={true} content={<ChartTooltipContent />} />
+            <YAxis
+              yAxisId="rates"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tickFormatter={(value) => `${value}%`}
+            />
+            <YAxis
+              yAxisId="price"
+              orientation="right"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tickFormatter={(value) => `$${value}`}
+            />
+            <ChartTooltip 
+              cursor={true} 
+              content={<ChartTooltipContent />}
+              formatter={(value, name) => {
+                if (name === 'ethPrice') {
+                  return [`$${value}`, name];
+                }
+                return [`${value}%`, name];
+              }}
+            />
             <Line
+              yAxisId="rates"
               dataKey="impliedAPR"
               type="monotone"
               stroke="hsl(var(--primary))"
@@ -69,13 +150,22 @@ export function APRChart() {
               dot={false}
             />
             <Line
+              yAxisId="rates"
               dataKey="underlyingAPR"
               type="monotone"
               stroke="hsl(var(--secondary))"
               strokeWidth={2}
               dot={false}
             />
-          </LineChart>
+            <Line
+              yAxisId="price"
+              dataKey="ethPrice"
+              type="monotone"
+              stroke="#f59e0b"
+              strokeWidth={2}
+              dot={false}
+            />
+          </ComposedChart>
         </ChartContainer>
       </CardContent>
     </Card>

@@ -9,6 +9,11 @@ export default function Header() {
         <h1 className="text-3xl font-bold text-primary tracking-tight font-outfit">
           HedgX<span className="text-foreground">.</span>
         </h1>
+        <div className="hidden md:flex items-center space-x-2 text-sm">
+          <div className="px-2 py-1 bg-green-500/20 text-green-400 rounded-md border border-green-500/30">
+            Sepolia Testnet
+          </div>
+        </div>
       </div>
       <div>
         <ConnectButton
@@ -36,6 +41,10 @@ export default function Header() {
           appMetadata={{
             name: "HedgX Protocol",
             url: "https://hedgx-protocol.vercel.app",
+          }}
+          chain={{
+            id: CONTRACT_CONFIG.CHAIN_ID,
+            rpc: CONTRACT_CONFIG.RPC_URLS[CONTRACT_CONFIG.CHAIN_ID as keyof typeof CONTRACT_CONFIG.RPC_URLS] || CONTRACT_CONFIG.RPC_URLS[11155111],
           }}
         />
       </div>

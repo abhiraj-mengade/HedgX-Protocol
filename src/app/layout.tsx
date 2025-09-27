@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThirdwebProvider } from "thirdweb/react";
 import Header from "./markets/header";
 import Note from "./markets/note";
+import { validateConfig } from "@/lib/config";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,6 +28,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Validate configuration on app start
+  if (typeof window === "undefined") {
+    validateConfig();
+  }
+
   return (
     <html lang="en">
       <body className={`${inter.variable} ${outfit.variable}`}>

@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import CollateralTable from "./collaterals";
 import Link from "next/link";
+import { useMarketData } from "@/hooks/useHedgXVault";
+import { formatBasisPoints, formatETH, formatTimeRemaining } from "@/lib/contract";
 
 interface Market {
   type: string;
@@ -15,43 +17,26 @@ interface Market {
 }
 
 export default function Markets() {
-  const [markets, setMarkets] = useState<Market[]>([
-    {
-      type: "BTC Collateral",
-      id: "BTC-USDT",
-      maturity: "30 days",
-      implied_apr: "7.07%",
-      underlying_apr: "7.27%",
-      volume: "14.143 BTC",
-      notional_ol: "37 BTC",
-      long_short_rate_roi: "1.76% long rate",
-    },
-    {
-      type: "SOL Collateral",
-      id: "SOL-USDT",
-      maturity: "30 days",
-      implied_apr: "6.06%",
-      underlying_apr: "4.38%",
-      volume: "1600 SOL",
-      notional_ol: "2321 SOL",
-      long_short_rate_roi: "143.76% short rate",
-    },
-    {
-      type: "ETH Collateral",
-      id: "ETH-USDT",
-      maturity: "30 days",
-      implied_apr: "5.05%",
-      underlying_apr: "2.38%",
-      volume: "2511 ETH",
-      notional_ol: "3843 ETH",
-      long_short_rate_roi: "37.4% short rate",
-    },
-  ]);
+  const { marketData, loading, error } = useMarketData();
+  const [markets, setMarkets] = useState<Market[]>([]);
 
   useEffect(() => {
-    // Simulate fetching data or any client-side dynamic logic
-    setMarkets((prevMarkets) => [...prevMarkets]);
-  }, []);
+    if (marketData) {
+      // Create ETH market data from contract
+      const ethMarket: Market = {
+        type: "ETH Collateral",
+        id: "ETH-USDT",
+        maturity: formatTimeRemaining(marketData.cycleEnd),
+        implied_apr: formatBasisPoints(marketData.impliedRate),
+        underlying_apr: formatBasisPoints(marketData.currentFundingRateBps),
+        volume: formatETH(marketData.vaultLiquidity),
+        notional_ol: formatETH(marketData.vaultLiquidity * 5n), // 5x leverage
+        long_short_rate_roi: `${formatBasisPoints(marketData.impliedRate)} implied rate`,
+      };
+
+      setMarkets([ethMarket]);
+    }
+  }, [marketData]);
 
   const renderCard = (market: Market) => (
     <div
@@ -81,20 +66,31 @@ export default function Markets() {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-[hsl(var(--primary))] text-lg">Loading market data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-red-400 text-lg">Error: {error}</div>
+        <div className="text-sm text-zinc-400 mt-2">
+          This might be due to contract configuration. Check the console for more details.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-4">
       <div className="hidden md:grid grid-cols-1 gap-2">
         <CollateralTable
-          title="BTC Collateral"
-          markets={markets.filter((market) => market.type === "BTC Collateral")}
-        />
-        <CollateralTable
           title="ETH Collateral"
           markets={markets.filter((market) => market.type === "ETH Collateral")}
-        />
-        <CollateralTable
-          title="SOL Collateral"
-          markets={markets.filter((market) => market.type === "SOL Collateral")}
         />
       </div>
       <div className="grid grid-cols-1 gap-2 md:hidden">

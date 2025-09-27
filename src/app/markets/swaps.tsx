@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTrigger,
@@ -8,6 +8,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useTrading, useMarketData, useHNPrice } from "@/hooks/useHedgXVault";
+import { useActiveAccount } from "thirdweb/react";
+import { Side, formatETH, formatBasisPoints, parseETH, COLLATERAL_RATIO } from "@/lib/contract";
 
 export function SwapCard() {
   const [activeTab, setActiveTab] = useState("market");
@@ -15,9 +18,90 @@ export function SwapCard() {
   const [notionalSize, setNotionalSize] = useState("");
   const [impliedRate, setImpliedRate] = useState("");
   const [showPopup, setShowPopup] = useState(false);
+  const [hnPrice, setHnPrice] = useState<bigint>(0n);
+  const [totalCost, setTotalCost] = useState<bigint>(0n);
+  const [loading, setLoading] = useState(false);
+
+  const { marketData } = useMarketData();
+  const { calculateHNPrice } = useHNPrice();
+  const { mintMarketLong, mintMarketShort, mintLimitLong, mintLimitShort, loading: tradingLoading } = useTrading();
+  const account = useActiveAccount();
+
+  // Calculate HN price and total cost when inputs change
+  useEffect(() => {
+    const calculateCosts = async () => {
+      if (!notionalSize || !marketData) return;
+
+      try {
+        const exposureAmount = parseETH(notionalSize);
+        const side = isLong ? Side.Long : Side.Short;
+        // Convert percentage to basis points for limit orders
+        const rate = activeTab === "market" 
+          ? marketData.impliedRate 
+          : BigInt(Math.floor(parseFloat(impliedRate || "0") * 100)); // Convert percentage to basis points
+        
+        const price = await calculateHNPrice(notionalSize, side, rate.toString());
+        const collateral = (exposureAmount * BigInt(Math.floor(COLLATERAL_RATIO * 1e18))) / BigInt(1e18);
+        const total = price + collateral;
+        
+        setHnPrice(price);
+        setTotalCost(total);
+      } catch (err) {
+        console.error("Failed to calculate costs:", err);
+      }
+    };
+
+    calculateCosts();
+  }, [notionalSize, isLong, activeTab, impliedRate, marketData, calculateHNPrice]);
 
   async function handleSwap() {
-    console.log("Swapping:", { activeTab, isLong, notionalSize, impliedRate });
+    if (!account) {
+      alert("Please connect your wallet");
+      return;
+    }
+
+    if (!notionalSize) {
+      alert("Please enter a notional size");
+      return;
+    }
+
+    if (activeTab === "limit" && !impliedRate) {
+      alert("Please enter a limit rate");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const side = isLong ? Side.Long : Side.Short;
+      const rate = activeTab === "market" ? marketData?.impliedRate || 0n : BigInt(impliedRate);
+      
+      let receipt;
+      if (activeTab === "market") {
+        if (isLong) {
+          receipt = await mintMarketLong(notionalSize, formatETH(totalCost));
+        } else {
+          receipt = await mintMarketShort(notionalSize, formatETH(totalCost));
+        }
+      } else {
+        // Convert percentage to basis points for contract calls
+        const rateInBps = Math.floor(parseFloat(impliedRate || "0") * 100);
+        if (isLong) {
+          receipt = await mintLimitLong(notionalSize, rateInBps.toString(), formatETH(totalCost));
+        } else {
+          receipt = await mintLimitShort(notionalSize, rateInBps.toString(), formatETH(totalCost));
+        }
+      }
+
+      alert("Transaction successful! Check your positions.");
+      setShowPopup(false);
+      setNotionalSize("");
+      setImpliedRate("");
+    } catch (err) {
+      alert(`Transaction failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -85,19 +169,30 @@ export function SwapCard() {
             </button>
           </div>
 
+          {/* Current Rates */}
+          {marketData && (
+            <div className="bg-[#222] rounded-xl p-4 space-y-2">
+              <div className="flex justify-between text-sm text-zinc-400">
+                <span>Current Oracle Rate</span>
+                <span className="text-blue-300 font-bold">{formatBasisPoints(marketData.currentFundingRateBps)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-zinc-400">
+                <span>Implied Rate</span>
+                <span className="text-[hsl(var(--primary))] font-bold">{formatBasisPoints(marketData.impliedRate)}</span>
+              </div>
+            </div>
+          )}
+
           {/* Notional Size */}
           <div className="bg-[#222] rounded-xl p-4 space-y-2">
             <div className="flex justify-between text-sm text-zinc-400 mb-1">
-              <span>My Notional Size</span>
-              <span className="text-[hsl(var(--primary))] font-bold">{notionalSize} YU</span>
-            </div>
-            <div className="flex justify-between text-sm text-zinc-400 mb-1">
-              <span>Available To Trade</span>
-              <span className="text-green-300 font-bold">0 BTC</span>
+              <span>Exposure Amount (ETH)</span>
+              <span className="text-[hsl(var(--primary))] font-bold">{notionalSize || "0"} ETH</span>
             </div>
             <input
               type="number"
-              placeholder="Notional Size"
+              step="0.001"
+              placeholder="Exposure Amount (ETH)"
               value={notionalSize}
               onChange={(e) => setNotionalSize(e.target.value)}
               className="w-full p-3 bg-[#181818] text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] font-semibold"
@@ -105,21 +200,42 @@ export function SwapCard() {
             {activeTab === "limit" && (
               <input
                 type="number"
-                placeholder="Implied Rate (%)"
+                step="0.01"
+                placeholder="Limit Rate (%) - e.g., 7.5 for 7.5%"
                 value={impliedRate}
                 onChange={(e) => setImpliedRate(e.target.value)}
                 className="w-full mt-2 p-3 bg-[#181818] text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 font-semibold"
               />
             )}
           </div>
+
+          {/* Cost Breakdown */}
+          {notionalSize && totalCost > 0n && (
+            <div className="bg-[#222] rounded-xl p-4 space-y-2">
+              <div className="text-sm text-zinc-400 mb-2">Cost Breakdown:</div>
+              <div className="flex justify-between text-sm text-zinc-300">
+                <span>Collateral (20%)</span>
+                <span className="text-white font-bold">{formatETH((parseETH(notionalSize) * BigInt(Math.floor(COLLATERAL_RATIO * 1e18))) / BigInt(1e18))}</span>
+              </div>
+              <div className="flex justify-between text-sm text-zinc-300">
+                <span>HN Premium</span>
+                <span className="text-white font-bold">{formatETH(hnPrice)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-[hsl(var(--primary))] font-bold border-t border-zinc-600 pt-2">
+                <span>Total Cost</span>
+                <span>{formatETH(totalCost)}</span>
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter className="flex gap-4 mt-6">
           <button
-            className="flex-1 py-2 rounded-lg bg-[hsl(var(--primary))] text-black font-bold  transition"
+            className="flex-1 py-2 rounded-lg bg-[hsl(var(--primary))] text-black font-bold transition disabled:opacity-50"
             onClick={handleSwap}
+            disabled={loading || tradingLoading || !account}
             type="button"
           >
-            Confirm & Swap
+            {loading || tradingLoading ? "Processing..." : "Confirm & Swap"}
           </button>
           <button
             className="flex-1 py-2 rounded-lg bg-zinc-700 text-white font-bold shadow hover:scale-[1.03] transition"
