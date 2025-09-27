@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMarketData } from "@/hooks/useHedgXVault";
 import { formatBasisPoints, formatETH, formatTimeRemaining } from "@/lib/contract";
 import DotGrid from "@/components/DotGrid";
+import { InterestRateTable } from "./interest-rates";
 
 interface Market {
   type: string;
@@ -39,6 +40,20 @@ export default function Markets() {
     }
   }, [marketData]);
 
+  // Mock interest rate markets data
+  const interestRateMarkets: Market[] = [
+    {
+      id: "ETH-USDT",
+      type: "ETH Collateral",
+      maturity: "Dec 31, 2024",
+      implied_apr: "15.2%",
+      underlying_apr: "12.8%",
+      volume: "$1.9M",
+      notional_ol: "$11.3M",
+      long_short_rate_roi: "12.1% / 9.8%",
+    },
+  ];
+
   const renderCard = (market: Market) => (
     <div
       key={market.id}
@@ -48,6 +63,34 @@ export default function Markets() {
         className="text-[hsl(var(--foreground))] font-semibold"
         style={{
           textShadow: "0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--primary))",
+        }}
+      >
+        {market.type}
+      </span>
+      <Link
+        href={`/markets/${market.id}`}
+        className="text-[hsl(var(--foreground))] hover:underline"
+      >
+        {market.id}
+      </Link>
+      <p>Maturity: {market.maturity}</p>
+      <p>Implied APR: {market.implied_apr}</p>
+      <p>Underlying APR: {market.underlying_apr}</p>
+      <p>Volume: {market.volume}</p>
+      <p>Notional OL: {market.notional_ol}</p>
+      <p>Long/Short Rate ROI: {market.long_short_rate_roi}</p>
+    </div>
+  );
+
+  const renderInterestRateCard = (market: Market) => (
+    <div
+      key={market.id}
+      className="rounded-lg p-4 flex flex-col gap-2 bg-[rgba(189,238,99,0.05)] border border-[rgba(189,238,99,0.14)]"
+    >
+      <span
+        className="text-[hsl(var(--foreground))] font-semibold"
+        style={{
+          textShadow: "0 0 8px hsl(var(--secondary)), 0 0 16px hsl(var(--secondary))",
         }}
       >
         {market.type}
@@ -94,7 +137,7 @@ export default function Markets() {
   return (
     <div className="min-h-screen relative">
       {/* Dot Grid Background */}
-      <div className="fixed inset-0 w-full h-full">
+      <div className="fixed inset-0 w-full h-full" style={{ opacity: 0.5 }}>
         <DotGrid
           dotSize={4}
           gap={15}
@@ -111,15 +154,34 @@ export default function Markets() {
 
       {/* Content Overlay */}
       <div className="relative z-10 pointer-events-none p-4">
-        <div className="pointer-events-auto">
-          <div className="hidden md:grid grid-cols-1 gap-2">
-            <CollateralTable
-              title="ETH Collateral"
-              markets={markets.filter((market) => market.type === "ETH Collateral")}
-            />
+        <div className="pointer-events-auto space-y-8">
+          {/* Funding Rate Markets Section */}
+          <div>
+            <h2 className="text-2xl font-bold text-[hsl(var(--foreground))] mb-4">
+              Funding Rate Markets
+            </h2>
+            <div className="hidden md:grid grid-cols-1 gap-2">
+              <CollateralTable
+                title="ETH Collateral"
+                markets={markets.filter((market) => market.type === "ETH Collateral")}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-2 md:hidden">
+              {markets.map((market) => renderCard(market))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-2 md:hidden">
-            {markets.map((market) => renderCard(market))}
+
+          {/* Interest Rate Markets Section */}
+          <div>
+            <h2 className="text-2xl font-bold text-[hsl(var(--foreground))] mb-4">
+              Interest Rate Markets
+            </h2>
+            <div className="hidden md:grid grid-cols-1 gap-2">
+              <InterestRateTable title="ETH Interest Rate" markets={interestRateMarkets} />
+            </div>
+            <div className="grid grid-cols-1 gap-2 md:hidden">
+              {interestRateMarkets.map((market) => renderInterestRateCard(market))}
+            </div>
           </div>
         </div>
       </div>
