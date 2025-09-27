@@ -9,6 +9,15 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      keyframes: {
+        shine: {
+          "0%": { "background-position": "100%" },
+          "100%": { "background-position": "-100%" },
+        },
+      },
+      animation: {
+        shine: "shine 5s linear infinite",
+      },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
@@ -18,10 +27,10 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-			fontFamily: {
-				outfit: ["var(--font-outfit)"],
-				inter: ["var(--font-inter)"],
-			},
+      fontFamily: {
+        outfit: ["var(--font-outfit)"],
+        inter: ["var(--font-inter)"],
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
@@ -53,26 +62,26 @@ const config: Config = {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
-				tertiary: {
-					DEFAULT: "hsl(var(--tertiary))",
-					foreground: "hsl(var(--tertiary-foreground))",
-				},
-				highlight: {
-					DEFAULT: "hsl(var(--highlight))",
-					foreground: "hsl(var(--highlight-foreground))",
-				},
-				info: {
-					DEFAULT: "hsl(var(--info))",
-					foreground: "hsl(var(--info-foreground))",
-				},
-				success: {
-					DEFAULT: "hsl(var(--success))",
-					foreground: "hsl(var(--success-foreground))",
-				},
-				warning: {
-					DEFAULT: "hsl(var(--warning))",
-					foreground: "hsl(var(--warning-foreground))",
-				},
+        tertiary: {
+          DEFAULT: "hsl(var(--tertiary))",
+          foreground: "hsl(var(--tertiary-foreground))",
+        },
+        highlight: {
+          DEFAULT: "hsl(var(--highlight))",
+          foreground: "hsl(var(--highlight-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

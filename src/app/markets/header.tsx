@@ -5,7 +5,7 @@ import { CONTRACT_CONFIG } from "@/lib/config";
 
 export default function Header() {
   return (
-    <header className="flex items-center justify-between px-4 py-2 sticky top-0 bg-background h-16 z-10">
+    <header className="flex items-center justify-between px-4 py-2 sticky top-0 bg-background h-16 z-20">
       <div className="flex items-center space-x-4">
         <h1 className="text-3xl font-bold text-primary tracking-tight font-outfit">
           HedgX<span className="text-foreground">.</span>

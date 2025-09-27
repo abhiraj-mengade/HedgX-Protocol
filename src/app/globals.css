@@ -52,3 +52,42 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes shine {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes shine-line {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+@keyframes shine-button {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shine {
+  animation: shine 3s ease-in-out infinite;
+}
+
+.animate-shine-line {
+  animation: shine-line 2s ease-in-out infinite;
+}
+
+.animate-shine-button {
+  animation: shine-button 1.5s ease-in-out;
+}

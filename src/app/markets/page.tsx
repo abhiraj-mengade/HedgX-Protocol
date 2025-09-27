@@ -4,6 +4,7 @@ import CollateralTable from "./collaterals";
 import Link from "next/link";
 import { useMarketData } from "@/hooks/useHedgXVault";
 import { formatBasisPoints, formatETH, formatTimeRemaining } from "@/lib/contract";
+import DotGrid from "@/components/DotGrid";
 
 interface Market {
   type: string;
@@ -91,15 +92,36 @@ export default function Markets() {
   }
 
   return (
-    <div className="grid gap-4">
-      <div className="hidden md:grid grid-cols-1 gap-2">
-        <CollateralTable
-          title="ETH Collateral"
-          markets={markets.filter((market) => market.type === "ETH Collateral")}
+    <div className="min-h-screen relative">
+      {/* Dot Grid Background */}
+      <div className="fixed inset-0 w-full h-full">
+        <DotGrid
+          dotSize={4}
+          gap={15}
+          baseColor="#303030"
+          activeColor="#BDEE63"
+          proximity={120}
+          shockRadius={250}
+          shockStrength={5}
+          resistance={750}
+          returnDuration={1.5}
+          style={{ width: "100%", height: "100%" }}
         />
       </div>
-      <div className="grid grid-cols-1 gap-2 md:hidden">
-        {markets.map((market) => renderCard(market))}
+
+      {/* Content Overlay */}
+      <div className="relative z-10 pointer-events-none p-4">
+        <div className="pointer-events-auto">
+          <div className="hidden md:grid grid-cols-1 gap-2">
+            <CollateralTable
+              title="ETH Collateral"
+              markets={markets.filter((market) => market.type === "ETH Collateral")}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:hidden">
+            {markets.map((market) => renderCard(market))}
+          </div>
+        </div>
       </div>
     </div>
   );
