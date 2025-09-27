@@ -93,6 +93,11 @@ contract HedgXVault is Ownable, ReentrancyGuard {
     constructor() Ownable(msg.sender) {
         devMode = true; // Enable dev mode by default
         vaultTradingEnabled = true; // Enable vault trading by default
+        
+        // Set initial rates between 2-15% (200-1500 basis points)
+        currentFundingRateBps = 500; // 5% initial underlying rate
+        lastOracleUpdate = block.timestamp;
+        
         _rollCycle(block.timestamp);
     }
 
@@ -155,16 +160,22 @@ contract HedgXVault is Ownable, ReentrancyGuard {
             currentEpoch = totalEpochs;
         }
         
-        // Calculate funding payment per epoch: positive rate = Long pays Short
-        int256 fundingPaymentPerEpoch = (int256(currentFundingRateBps) * int256(DELTA)) / int256(BASIS_POINTS);
-        int256 totalFundingPayment = fundingPaymentPerEpoch * int256(epochsElapsed);
+        // Calculate PnL per epoch based on rate differences
+        // For Long: PnL = (Underlying Rate - Implied Rate) * Notional Value * δ
+        // For Short: PnL = (Implied Rate - Underlying Rate) * Notional Value * δ
+        uint256 impliedRate = getImpliedRate();
+        int256 rateDiff = int256(currentFundingRateBps) - int256(impliedRate);
         
-        // Update indices: Long pays when rate > 0, Short pays when rate < 0
-        longIndex -= totalFundingPayment;
-        shortIndex += totalFundingPayment;
+        // Calculate PnL per epoch: rate difference * time component
+        int256 pnlPerEpoch = (rateDiff * int256(DELTA)) / int256(BASIS_POINTS);
+        int256 totalPnL = pnlPerEpoch * int256(epochsElapsed);
+        
+        // Update indices: Long gets positive PnL when underlying > implied, Short gets opposite
+        longIndex += totalPnL;
+        shortIndex -= totalPnL;
         
         lastSettlement = block.timestamp;
-        emit Settled(-totalFundingPayment, totalFundingPayment, epochsElapsed);
+        emit Settled(totalPnL, -totalPnL, epochsElapsed);
     }
 
     // --------- HN Pricing (epoch-based) ---------
@@ -180,56 +191,46 @@ contract HedgXVault is Ownable, ReentrancyGuard {
     }
 
     // Calculate HN price (premium for exposure) using epoch-based formula
+    // HN(t) = Implied Rate(t) * (Remaining epochs * δ)
+    // δ = 8/(24*365) = 0.000913 (time multiplier)
     function calculateHNPrice(uint256 exposureAmount, Side side, uint256 fixedRate) public view returns (uint256) {
         if (currentEpoch >= totalEpochs) return 0;
         
         uint256 remainingEpochs = totalEpochs - currentEpoch;
         uint256 impliedRate = getImpliedRate();
         
-        // Calculate time component: E_rem * δ
         // Ensure we have at least 1 epoch remaining for positive price
         if (remainingEpochs == 0) return 0;
         
+        // Calculate time component: E_rem * δ
         uint256 timeComponent = (remainingEpochs * DELTA) / 1e18;
         
-        // Base time value premium (always positive except at last epoch)
-        // This represents the intrinsic time value of the position
-        uint256 baseTimeValue = (exposureAmount * timeComponent) / 1e18;
+        // HN(t) = Implied Rate(t) * (Remaining epochs * δ)
+        // This represents the current time value of the position
+        uint256 hnPrice = (impliedRate * timeComponent) / BASIS_POINTS;
         
-        // Rate difference premium (can be positive or negative)
-        int256 rateDiff;
-        if (side == Side.Long) {
-            rateDiff = int256(impliedRate) - int256(fixedRate);
-        } else {
-            rateDiff = int256(fixedRate) - int256(impliedRate);
-        }
-        
-        // Rate difference component (scaled by time)
-        int256 rateComponent = (int256(exposureAmount) * rateDiff * int256(timeComponent)) / (int256(BASIS_POINTS) * 1e18);
-        
-        // Total HN Price = Base Time Value + Rate Difference Component
-        int256 totalPrice = int256(baseTimeValue) + rateComponent;
-        
-        // Ensure non-negative price (can't have negative premium)
-        return totalPrice > 0 ? uint256(totalPrice) : 0;
+        // Scale by exposure amount
+        return (exposureAmount * hnPrice) / 1e18;
     }
 
     // Calculate current token value (remaining HN value + collateral + PnL)
+    // Long Position Value = HN(t) + cumulative realized long PnL
+    // Short Position Value = HN(t) + cumulative realized short PnL
     function calculateTokenValue(uint256 amountHN, Side side, uint256 fixedRate) public view returns (uint256) {
         if (currentEpoch >= totalEpochs) return 0;
         
-        // Remaining HN value (premium decay)
-        uint256 remainingHNValue = calculateHNPrice(amountHN, side, fixedRate);
+        // Current HN value (time value)
+        uint256 currentHNValue = calculateHNPrice(amountHN, side, fixedRate);
         
         // Collateral value (0.2 ETH per 1 ETH exposure)
         uint256 collateralValue = (amountHN * COLLATERAL_RATIO) / VALUE;
         
-        // PnL from funding rate
+        // Cumulative realized PnL from funding rate
         int256 indexValue = side == Side.Long ? longIndex : shortIndex;
         int256 pnlValue = (indexValue * int256(amountHN)) / 1e18;
         
-        // Total value = collateral + remaining HN value + PnL
-        int256 totalValue = int256(collateralValue + remainingHNValue) + pnlValue;
+        // Total value = collateral + current HN value + cumulative PnL
+        int256 totalValue = int256(collateralValue + currentHNValue) + pnlValue;
         
         return totalValue > 0 ? uint256(totalValue) : 0;
     }
@@ -504,7 +505,9 @@ contract HedgXVault is Ownable, ReentrancyGuard {
             if (vaultTradingEnabled && vaultLiquidity > 0) {
                 return currentFundingRateBps; // Vault provides liquidity at oracle rate
             } else {
-                return currentFundingRateBps; // Fallback to oracle rate
+                // Set initial implied rate between 2-15% (200-1500 basis points)
+                // Start with 7% (700 basis points) as a reasonable middle ground
+                return 500; // 7% initial implied rate
             }
         }
         
@@ -538,16 +541,22 @@ contract HedgXVault is Ownable, ReentrancyGuard {
             currentEpoch = totalEpochs;
         }
         
-        // Calculate funding payment per epoch: positive rate = Long pays Short
-        int256 fundingPaymentPerEpoch = (int256(currentFundingRateBps) * int256(DELTA)) / int256(BASIS_POINTS);
-        int256 totalFundingPayment = fundingPaymentPerEpoch * int256(epochsElapsed);
+        // Calculate PnL per epoch based on rate differences
+        // For Long: PnL = (Underlying Rate - Implied Rate) * Notional Value * δ
+        // For Short: PnL = (Implied Rate - Underlying Rate) * Notional Value * δ
+        uint256 impliedRate = getImpliedRate();
+        int256 rateDiff = int256(currentFundingRateBps) - int256(impliedRate);
         
-        // Update indices: Long pays when rate > 0, Short pays when rate < 0
-        longIndex -= totalFundingPayment;
-        shortIndex += totalFundingPayment;
+        // Calculate PnL per epoch: rate difference * time component
+        int256 pnlPerEpoch = (rateDiff * int256(DELTA)) / int256(BASIS_POINTS);
+        int256 totalPnL = pnlPerEpoch * int256(epochsElapsed);
+        
+        // Update indices: Long gets positive PnL when underlying > implied, Short gets opposite
+        longIndex += totalPnL;
+        shortIndex -= totalPnL;
         
         lastSettlement = block.timestamp;
-        emit Settled(-totalFundingPayment, totalFundingPayment, epochsElapsed);
+        emit Settled(totalPnL, -totalPnL, epochsElapsed);
     }
 
     function forceRollCycle() external onlyOwner {

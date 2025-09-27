@@ -8,9 +8,14 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",
-    "setup": "node setup-env.js"
+    "setup": "node setup-env.js",
+    "publish-knowledge": "node scripts/publish-knowledge-final.js",
+    "publish-to-testnet": "node scripts/publish-knowledge-to-testnet.js",
+    "create-knowledge": "node scripts/create-knowledge-entities.js"
   },
   "dependencies": {
+    "@graphprotocol/grc-20": "^0.25.2",
+    "@graphprotocol/hypergraph-react": "^0.7.3",
     "@pythnetwork/pyth-sdk-solidity": "^4.2.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.7",
