@@ -317,17 +317,46 @@ export function useOrderbookData() {
       setLoading(true);
       setError(null);
 
-      // Get orderbook status
+      // Get orderbook status and best rates
       const [longOrders, shortOrders, longWeightedRate, shortWeightedRate] = await (readContract as any)({
         contract: hedgxVaultContract as any,
         method: "getOrderbookStatus"
       });
 
+      // Get best rates and spread (with fallback for old contracts)
+      let bestLongRate = 0n;
+      let bestShortRate = 0n;
+      let spread = 0n;
+
+      try {
+        const [bestLong, bestShort] = await (readContract as any)({
+          contract: hedgxVaultContract as any,
+          method: "getBestTwoOrders"
+        });
+        bestLongRate = bestLong;
+        bestShortRate = bestShort;
+
+        const spreadResult = await (readContract as any)({
+          contract: hedgxVaultContract as any,
+          method: "getSpread"
+        });
+        spread = spreadResult;
+      } catch (error) {
+        console.warn("New orderbook functions not available, using fallback values");
+        // Fallback: use current funding rate for both
+        bestLongRate = 500n; // 5% default
+        bestShortRate = 500n; // 5% default
+        spread = 0n;
+      }
+
       setOrderbookData({
         longOrders,
         shortOrders,
         longWeightedRate,
-        shortWeightedRate
+        shortWeightedRate,
+        bestLongRate,
+        bestShortRate,
+        spread
       });
 
       // Get individual limit orders (check first few order IDs)
@@ -583,6 +612,32 @@ export function useHNPrice() {
     }
   }, []);
 
+  const calculateHNPriceWithBuffer = useCallback(async (exposureAmount: string, side: Side, fixedRate: string) => {
+    try {
+      console.log("Calling calculateHNPriceWithBuffer with params:", {
+        exposureAmount,
+        side,
+        fixedRate,
+        parsedExposure: parseETH(exposureAmount).toString(),
+        parsedRate: BigInt(fixedRate).toString()
+      });
+      
+      const price = await (readContract as any)({
+        contract: hedgxVaultContract as any,
+        method: "calculateHNPriceWithBuffer",
+        params: [parseETH(exposureAmount), side, BigInt(fixedRate)]
+      });
+      
+      console.log("calculateHNPriceWithBuffer result:", price.toString());
+      return price;
+    } catch (err) {
+      console.error("calculateHNPriceWithBuffer error:", err);
+      console.error("Contract address:", hedgxVaultContract?.address);
+      console.error("Contract ABI has function:", hedgxVaultContract?.abi?.some((item: any) => item.name === "calculateHNPriceWithBuffer"));
+      throw new Error(`Failed to calculate HN price with buffer: ${err instanceof Error ? err.message : "Unknown error"}`);
+    }
+  }, []);
+
   const calculateTokenValue = useCallback(async (amountHN: string, side: Side, fixedRate: string) => {
     try {
       const value = await (readContract as any)({
@@ -596,5 +651,5 @@ export function useHNPrice() {
     }
   }, []);
 
-  return { calculateHNPrice, calculateTokenValue };
+  return { calculateHNPrice, calculateHNPriceWithBuffer, calculateTokenValue };
 }

@@ -35,7 +35,6 @@ export { hedgxVaultContract };
 // Contract constants
 export const BASIS_POINTS = CONTRACT_CONFIG.BASIS_POINTS;
 export const LEVERAGE = CONTRACT_CONFIG.LEVERAGE;
-export const COLLATERAL_RATIO = CONTRACT_CONFIG.COLLATERAL_RATIO;
 
 // Helper functions
 export const formatBasisPoints = (bps: bigint): string => {
@@ -44,6 +43,14 @@ export const formatBasisPoints = (bps: bigint): string => {
 
 export const formatETH = (wei: bigint): string => {
   return (Number(wei) / 1e18).toFixed(4) + " ETH";
+};
+
+export const formatToken = (wei: bigint): string => {
+  return (Number(wei) / 1e18).toFixed(4) + " Token";
+};
+
+export const formatETHValue = (wei: bigint): string => {
+  return (Number(wei) / 1e18).toFixed(4);
 };
 
 export const parseETH = (eth: string): bigint => {
@@ -71,7 +78,6 @@ export enum Side {
 // Position interface
 export interface Position {
   exposureAmount: bigint;
-  collateral: bigint;
   fixedRate: bigint;
   mintTime: bigint;
   side: Side;
@@ -107,4 +113,7 @@ export interface OrderbookData {
   shortOrders: bigint;
   longWeightedRate: bigint;
   shortWeightedRate: bigint;
+  bestLongRate: bigint;
+  bestShortRate: bigint;
+  spread: bigint;
 }

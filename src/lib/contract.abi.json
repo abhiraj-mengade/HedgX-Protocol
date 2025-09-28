@@ -125,7 +125,7 @@
 			{
 				"indexed": false,
 				"internalType": "uint256",
-				"name": "valueETH",
+				"name": "valueToken",
 				"type": "uint256"
 			},
 			{
@@ -212,7 +212,7 @@
 			{
 				"indexed": false,
 				"internalType": "uint256",
-				"name": "valueETH",
+				"name": "valueToken",
 				"type": "uint256"
 			}
 		],
@@ -322,19 +322,6 @@
 	},
 	{
 		"inputs": [],
-		"name": "COLLATERAL_RATIO",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
 		"name": "CYCLE_LENGTH",
 		"outputs": [
 			{
@@ -427,7 +414,7 @@
 			},
 			{
 				"internalType": "enum HedgXVault.Side",
-				"name": "side",
+				"name": "",
 				"type": "uint8"
 			},
 			{
@@ -437,6 +424,35 @@
 			}
 		],
 		"name": "calculateHNPrice",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "exposureAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum HedgXVault.Side",
+				"name": "side",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "fixedRate",
+				"type": "uint256"
+			}
+		],
+		"name": "calculateHNPriceWithBuffer",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -474,6 +490,19 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "orderId",
+				"type": "uint256"
+			}
+		],
+		"name": "cancelLimitOrder",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -580,6 +609,24 @@
 		"name": "forceSettle",
 		"outputs": [],
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getBestTwoOrders",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "bestLongRate",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "bestShortRate",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -750,11 +797,6 @@
 					},
 					{
 						"internalType": "uint256",
-						"name": "collateral",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
 						"name": "fixedRate",
 						"type": "uint256"
 					},
@@ -767,11 +809,45 @@
 						"internalType": "enum HedgXVault.Side",
 						"name": "side",
 						"type": "uint8"
+					},
+					{
+						"internalType": "int256",
+						"name": "accumulatedPnL",
+						"type": "int256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "lastSettledEpoch",
+						"type": "uint256"
 					}
 				],
 				"internalType": "struct HedgXVault.Position",
 				"name": "",
 				"type": "tuple"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "positionId",
+				"type": "uint256"
+			}
+		],
+		"name": "getPositionPnL",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
 			}
 		],
 		"stateMutability": "view",
@@ -831,6 +907,19 @@
 			{
 				"internalType": "uint256",
 				"name": "impliedPercent",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getSpread",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
 				"type": "uint256"
 			}
 		],
@@ -1080,11 +1169,6 @@
 			},
 			{
 				"internalType": "uint256",
-				"name": "collateral",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
 				"name": "fixedRate",
 				"type": "uint256"
 			},
@@ -1097,6 +1181,16 @@
 				"internalType": "enum HedgXVault.Side",
 				"name": "side",
 				"type": "uint8"
+			},
+			{
+				"internalType": "int256",
+				"name": "accumulatedPnL",
+				"type": "int256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "lastSettledEpoch",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
@@ -1137,6 +1231,24 @@
 	{
 		"inputs": [],
 		"name": "settle",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "positionId",
+				"type": "uint256"
+			}
+		],
+		"name": "settlePosition",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"

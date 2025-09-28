@@ -11,7 +11,7 @@ import {
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useTrading, useMarketData, useHNPrice } from "@/hooks/useHedgXVault";
 import { useActiveAccount } from "thirdweb/react";
-import { Side, formatETH, formatBasisPoints, parseETH, COLLATERAL_RATIO } from "@/lib/contract";
+import { Side, formatETH, formatETHValue, formatBasisPoints, parseETH } from "@/lib/contract";
 
 export function SwapCard() {
   const [activeTab, setActiveTab] = useState("market");
@@ -24,7 +24,17 @@ export function SwapCard() {
   const [loading, setLoading] = useState(false);
 
   const { marketData } = useMarketData();
-  const { calculateHNPrice } = useHNPrice();
+  const { calculateHNPrice, calculateHNPriceWithBuffer } = useHNPrice();
+  
+  // Debug: Check if functions exist
+  console.log("useHNPrice hook result:", { calculateHNPrice, calculateHNPriceWithBuffer });
+  
+  // Simple test
+  if (calculateHNPriceWithBuffer) {
+    console.log("calculateHNPriceWithBuffer function exists!");
+  } else {
+    console.error("calculateHNPriceWithBuffer function is undefined!");
+  }
   const {
     mintMarketLong,
     mintMarketShort,
@@ -34,10 +44,31 @@ export function SwapCard() {
   } = useTrading();
   const account = useActiveAccount();
 
+  // Test calculateHNPriceWithBuffer on component mount
+  React.useEffect(() => {
+    const testBufferFunction = async () => {
+      try {
+        console.log("Testing calculateHNPriceWithBuffer...");
+        const result = await calculateHNPriceWithBuffer("1", Side.Long, "200");
+        console.log("calculateHNPriceWithBuffer test result:", result.toString());
+      } catch (err) {
+        console.error("calculateHNPriceWithBuffer test failed:", err);
+      }
+    };
+    
+    testBufferFunction();
+  }, [calculateHNPriceWithBuffer]);
+
   // Calculate HN price and total cost when inputs change
   useEffect(() => {
     const calculateCosts = async () => {
-      if (!notionalSize || !marketData) return;
+      if (!notionalSize) return;
+      
+      // For market orders, we need marketData
+      if (activeTab === "market" && !marketData) return;
+      
+      // For limit orders, we need impliedRate
+      if (activeTab === "limit" && !impliedRate) return;
 
       try {
         const exposureAmount = parseETH(notionalSize);
@@ -45,23 +76,37 @@ export function SwapCard() {
         // Convert percentage to basis points for limit orders
         const rate =
           activeTab === "market"
-            ? marketData.impliedRate
-            : BigInt(Math.floor(parseFloat(impliedRate || "0") * 100)); // Convert percentage to basis points
+            ? marketData?.impliedRate || 0n
+            : impliedRate ? BigInt(Math.floor(parseFloat(impliedRate) * 100)) : 0n; // Convert percentage to basis points
 
-        const price = await calculateHNPrice(notionalSize, side, rate.toString());
-        const collateral =
-          (exposureAmount * BigInt(Math.floor(COLLATERAL_RATIO * 1e18))) / BigInt(1e18);
-        const total = price + collateral;
+        // Use buffer function for limit orders to prevent transaction failures
+        const price = activeTab === "limit" 
+          ? await calculateHNPriceWithBuffer(notionalSize, side, rate.toString())
+          : await calculateHNPrice(notionalSize, side, rate.toString());
+        
+        // No collateral needed - just the rate premium
+        const total = price;
 
         setHnPrice(price);
         setTotalCost(total);
+        
+        // Debug logging
+        console.log("Cost calculation:", {
+          notionalSize,
+          activeTab,
+          impliedRate,
+          rate: rate.toString(),
+          price: price.toString(),
+          total: total.toString(),
+          side: isLong ? "Long" : "Short"
+        });
       } catch (err) {
         console.error("Failed to calculate costs:", err);
       }
     };
 
     calculateCosts();
-  }, [notionalSize, isLong, activeTab, impliedRate, marketData, calculateHNPrice]);
+  }, [notionalSize, isLong, activeTab, impliedRate, marketData, calculateHNPrice, calculateHNPriceWithBuffer]);
 
   async function handleSwap() {
     if (!account) {
@@ -88,17 +133,17 @@ export function SwapCard() {
       let receipt;
       if (activeTab === "market") {
         if (isLong) {
-          receipt = await mintMarketLong(notionalSize, formatETH(totalCost));
+          receipt = await mintMarketLong(notionalSize, formatETHValue(totalCost));
         } else {
-          receipt = await mintMarketShort(notionalSize, formatETH(totalCost));
+          receipt = await mintMarketShort(notionalSize, formatETHValue(totalCost));
         }
       } else {
         // Convert percentage to basis points for contract calls
         const rateInBps = Math.floor(parseFloat(impliedRate || "0") * 100);
         if (isLong) {
-          receipt = await mintLimitLong(notionalSize, rateInBps.toString(), formatETH(totalCost));
+          receipt = await mintLimitLong(notionalSize, rateInBps.toString(), formatETHValue(totalCost));
         } else {
-          receipt = await mintLimitShort(notionalSize, rateInBps.toString(), formatETH(totalCost));
+          receipt = await mintLimitShort(notionalSize, rateInBps.toString(), formatETHValue(totalCost));
         }
       }
 
@@ -244,22 +289,13 @@ export function SwapCard() {
           </div>
 
           {/* Cost Breakdown */}
-          {notionalSize && totalCost > 0n && (
+          {notionalSize && (totalCost > 0n || (activeTab === "limit" && impliedRate)) && (
             <div className="bg-gradient-to-r from-[rgba(189,238,99,0.05)] to-[rgba(189,238,99,0.02)] border border-[rgba(189,238,99,0.14)] rounded-lg p-4 space-y-3">
               <div className="text-sm text-[hsl(var(--muted-foreground))] mb-3 font-semibold">
                 Cost Breakdown:
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[hsl(var(--muted-foreground))]">Collateral (20%)</span>
-                <span className="text-[hsl(var(--foreground))] font-bold">
-                  {formatETH(
-                    (parseETH(notionalSize) * BigInt(Math.floor(COLLATERAL_RATIO * 1e18))) /
-                      BigInt(1e18),
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-[hsl(var(--muted-foreground))]">HN Premium</span>
+                <span className="text-[hsl(var(--muted-foreground))]">Rate Premium</span>
                 <span className="text-[hsl(var(--foreground))] font-bold">
                   {formatETH(hnPrice)}
                 </span>

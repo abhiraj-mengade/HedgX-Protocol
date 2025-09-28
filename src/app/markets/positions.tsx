@@ -1,6 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import { useUserPositions, useTrading, useOrderbookData } from "@/hooks/useHedgXVault";
+import { useUserPositions, useTrading, useOrderbookData, useHNPrice, useMarketData } from "@/hooks/useHedgXVault";
+import { readContract, prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
+import { hedgxVaultContract } from "@/lib/contract";
 import { formatETH, formatBasisPoints, Side } from "@/lib/contract";
 import { useActiveAccount } from "thirdweb/react";
 
@@ -8,8 +10,267 @@ export function Positions() {
   const { positions, loading, error, refetch } = useUserPositions();
   const { limitOrders, loading: ordersLoading, error: ordersError } = useOrderbookData();
   const { redeem, loading: tradingLoading } = useTrading();
+  const { calculateTokenValue, calculateHNPriceWithBuffer } = useHNPrice();
+  const { marketData } = useMarketData();
   const account = useActiveAccount();
   const [redeemingPosition, setRedeemingPosition] = useState<number | null>(null);
+  const [positionValues, setPositionValues] = useState<{ [key: number]: bigint }>({});
+  const [redeemValues, setRedeemValues] = useState<{ [key: number]: bigint }>({});
+  const [positionPnLs, setPositionPnLs] = useState<{ [key: number]: { pnl: bigint, pnlPercent: number, accumulated: bigint, unrealized: bigint } }>({});
+  const [longIndex, setLongIndex] = useState<bigint>(0n);
+  const [shortIndex, setShortIndex] = useState<bigint>(0n);
+  const [isSettling, setIsSettling] = useState(false);
+  const [isUpdatingRate, setIsUpdatingRate] = useState(false);
+  const [newOracleRate, setNewOracleRate] = useState("");
+
+  // Fetch settlement indices from contract
+  React.useEffect(() => {
+    const fetchSettlementIndices = async () => {
+      try {
+        const [longIdx, shortIdx] = await Promise.all([
+          (readContract as any)({
+            contract: hedgxVaultContract as any,
+            method: "longIndex"
+          }),
+          (readContract as any)({
+            contract: hedgxVaultContract as any,
+            method: "shortIndex"
+          })
+        ]);
+        
+        setLongIndex(longIdx);
+        setShortIndex(shortIdx);
+        
+      console.log("Settlement indices:", {
+        longIndex: longIdx.toString(),
+        shortIndex: shortIdx.toString()
+      });
+      
+      // Also fetch current rates for debugging
+      try {
+        const rates = await (readContract as any)({
+          contract: hedgxVaultContract as any,
+          method: "getRates"
+        });
+        console.log("Current rates:", {
+          oracleRate: rates[0].toString(),
+          impliedRate: rates[1].toString()
+        });
+      } catch (err) {
+        console.error("Failed to fetch rates:", err);
+      }
+      } catch (err) {
+        console.error("Failed to fetch settlement indices:", err);
+      }
+    };
+    
+    fetchSettlementIndices();
+  }, []);
+
+  // Trigger settlement
+  const handleSettle = async () => {
+    if (!account) {
+      alert("Please connect your wallet");
+      return;
+    }
+
+    try {
+      setIsSettling(true);
+      
+      const transaction = (prepareContractCall as any)({
+        contract: hedgxVaultContract as any,
+        method: "settle"
+      });
+
+      const result = await sendTransaction({ transaction, account });
+      await waitForReceipt(result);
+      
+      alert("Settlement successful! PnL has been updated.");
+      
+      // Refresh settlement indices
+      const fetchSettlementIndices = async () => {
+        try {
+          const [longIdx, shortIdx] = await Promise.all([
+            (readContract as any)({
+              contract: hedgxVaultContract as any,
+              method: "longIndex"
+            }),
+            (readContract as any)({
+              contract: hedgxVaultContract as any,
+              method: "shortIndex"
+            })
+          ]);
+          
+          setLongIndex(longIdx);
+          setShortIndex(shortIdx);
+          
+          console.log("Updated settlement indices:", {
+            longIndex: longIdx.toString(),
+            shortIndex: shortIdx.toString()
+          });
+          
+          // Also fetch current rates for debugging
+          try {
+            const rates = await (readContract as any)({
+              contract: hedgxVaultContract as any,
+              method: "getRates"
+            });
+            console.log("Current rates after settlement:", {
+              oracleRate: rates[0].toString(),
+              impliedRate: rates[1].toString(),
+              rateDifference: (parseInt(rates[0]) - parseInt(rates[1])).toString()
+            });
+          } catch (err) {
+            console.error("Failed to fetch rates after settlement:", err);
+          }
+        } catch (err) {
+          console.error("Failed to fetch updated settlement indices:", err);
+        }
+      };
+      
+      await fetchSettlementIndices();
+      
+    } catch (err) {
+      alert(`Settlement failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
+  // Update oracle rate
+  const handleUpdateRate = async () => {
+    if (!account) {
+      alert("Please connect your wallet");
+      return;
+    }
+
+    if (!newOracleRate) {
+      alert("Please enter a new oracle rate");
+      return;
+    }
+
+    try {
+      setIsUpdatingRate(true);
+      
+      // Convert percentage to basis points (e.g., 6.5% -> 650)
+      const rateBps = Math.floor(parseFloat(newOracleRate) * 100);
+      
+      const transaction = (prepareContractCall as any)({
+        contract: hedgxVaultContract as any,
+        method: "updateRate",
+        params: [BigInt(rateBps)]
+      });
+
+      const result = await sendTransaction({ transaction, account });
+      await waitForReceipt(result);
+      
+      alert(`Oracle rate updated to ${newOracleRate}%!`);
+      setNewOracleRate("");
+      
+    } catch (err) {
+      alert(`Rate update failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setIsUpdatingRate(false);
+    }
+  };
+
+
+  // Calculate PnL for a position using the contract's getPositionPnL function
+  const calculatePnL = async (position: any, positionId: number, currentValue: bigint) => {
+    try {
+      // Get total PnL (cumulative since position creation)
+      const totalPnL = await (readContract as any)({
+        contract: hedgxVaultContract as any,
+        method: "getPositionPnL",
+        params: [account?.address, BigInt(positionId)]
+      });
+      
+      // Calculate percentage based on current value
+      const pnlPercent = currentValue > 0n 
+        ? Number((totalPnL * 10000n) / currentValue) / 100
+        : 0;
+      
+      console.log("PnL calculation (cumulative):", {
+        positionId,
+        side: position.side === Side.Long ? "Long" : "Short",
+        exposureAmount: position.exposureAmount.toString(),
+        fixedRate: position.fixedRate.toString(),
+        totalPnL: totalPnL.toString(),
+        currentValue: currentValue.toString(),
+        pnlPercent
+      });
+      
+      return { 
+        pnl: totalPnL, 
+        pnlPercent,
+        accumulated: totalPnL, // All PnL is now "accumulated" since position creation
+        unrealized: 0n // No separate unrealized component
+      };
+    } catch (err) {
+      console.error("Failed to get position PnL:", err);
+      return { pnl: 0n, pnlPercent: 0, accumulated: 0n, unrealized: 0n };
+    }
+  };
+
+  // Update position values when positions or market data changes
+  React.useEffect(() => {
+    const updatePositionValues = async () => {
+      if (!positions.length || !marketData) return;
+      
+      const newValues: { [key: number]: bigint } = {};
+      const newRedeemValues: { [key: number]: bigint } = {};
+      const newPnLs: { [key: number]: { pnl: bigint, pnlPercent: number } } = {};
+      
+      for (let i = 0; i < positions.length; i++) {
+        try {
+          const position = positions[i];
+          
+          // Market value: Use current implied rate (0) to get current market value
+          const marketValue = await calculateHNPriceWithBuffer(
+            formatETH(position.exposureAmount),
+            position.side,
+            "0" // Use 0 for current implied rate
+          );
+          
+          // Redeem value: Use current market rate (same as market value)
+          const redeemValue = await calculateHNPriceWithBuffer(
+            formatETH(position.exposureAmount),
+            position.side,
+            "0" // Use 0 for current implied rate (market value)
+          );
+          
+          // Calculate PnL using the contract function
+          const pnlData = await calculatePnL(position, i, marketValue);
+          
+          console.log(`Position ${i} calculations:`, {
+            exposureAmount: formatETH(position.exposureAmount),
+            side: position.side === Side.Long ? "Long" : "Short",
+            fixedRate: position.fixedRate.toString(),
+            currentImpliedRate: marketData?.impliedRate?.toString() || "unknown",
+            marketValue: formatETH(marketValue),
+            redeemValue: formatETH(redeemValue),
+            pnl: formatETH(pnlData.pnl),
+            pnlPercent: pnlData.pnlPercent.toFixed(2) + "%"
+          });
+          
+          newValues[i] = marketValue;
+          newRedeemValues[i] = redeemValue;
+          newPnLs[i] = pnlData;
+        } catch (err) {
+          console.error(`Failed to calculate values for position ${i}:`, err);
+          newValues[i] = 0n;
+          newRedeemValues[i] = 0n;
+          newPnLs[i] = { pnl: 0n, pnlPercent: 0, accumulated: 0n, unrealized: 0n };
+        }
+      }
+      
+      setPositionValues(newValues);
+      setRedeemValues(newRedeemValues);
+      setPositionPnLs(newPnLs);
+    };
+    
+    updatePositionValues();
+  }, [positions, marketData, calculateTokenValue]);
 
   const handleRedeem = async (positionId: number, amount: string) => {
     if (!account) {
@@ -45,9 +306,38 @@ export function Positions() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Open Positions Section */}
-      <div className="bg-[#181818] p-6 rounded-2xl shadow-xl border border-[rgba(189,238,99,0.18)]">
-        <h2 className="text-xl font-bold text-[hsl(var(--primary))] mb-4">Open Positions</h2>
+        {/* Open Positions Section */}
+        <div className="bg-[#181818] p-6 rounded-2xl shadow-xl border border-[rgba(189,238,99,0.18)]">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-[hsl(var(--primary))]">Active Positions</h2>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="6.5"
+                  value={newOracleRate}
+                  onChange={(e) => setNewOracleRate(e.target.value)}
+                  className="w-20 px-2 py-1 text-sm bg-transparent border border-gray-600 rounded text-white"
+                />
+                <span className="text-sm text-gray-400">%</span>
+                <button
+                  onClick={handleUpdateRate}
+                  disabled={isUpdatingRate || !account}
+                  className="px-3 py-1 text-sm rounded-lg bg-green-600 text-white font-bold shadow hover:scale-105 transition disabled:opacity-50"
+                >
+                  {isUpdatingRate ? "Updating..." : "Set Oracle"}
+                </button>
+              </div>
+              <button
+                onClick={handleSettle}
+                disabled={isSettling || !account}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold shadow hover:scale-105 transition disabled:opacity-50"
+              >
+                {isSettling ? "Settling..." : "Trigger Settlement"}
+              </button>
+            </div>
+          </div>
         
         {loading ? (
           <div className="text-center text-[hsl(var(--primary))] py-8">
@@ -69,36 +359,63 @@ export function Positions() {
                   <th className="px-4 py-2">Position ID</th>
                   <th className="px-4 py-2">Direction</th>
                   <th className="px-4 py-2">Exposure</th>
-                  <th className="px-4 py-2">Collateral</th>
                   <th className="px-4 py-2">Fixed Rate</th>
-                  <th className="px-4 py-2">Action</th>
+                  <th className="px-4 py-2">Current Value</th>
+                  <th className="px-4 py-2">PnL (Cumulative)</th>
+                  <th className="px-4 py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {positions.map((pos, idx) => (
-                  <tr key={idx} className="border-b border-zinc-700 hover:bg-[#232323] transition">
-                    <td className="px-4 py-2 text-zinc-400">{idx}</td>
-                    <td
-                      className={`px-4 py-2 font-bold ${
-                        pos.side === Side.Long ? "text-green-400" : "text-red-400"
-                      }`}
-                    >
-                      {pos.side === Side.Long ? "Long" : "Short"}
-                    </td>
-                    <td className="px-4 py-2 text-white">{formatETH(pos.exposureAmount)}</td>
-                    <td className="px-4 py-2 text-white">{formatETH(pos.collateral)}</td>
-                    <td className="px-4 py-2 text-blue-300">{formatBasisPoints(pos.fixedRate)}</td>
-                    <td className="px-4 py-2">
-                      <button
-                        className="px-3 py-1 rounded-lg bg-[hsl(var(--primary))] text-black font-bold shadow hover:scale-105 transition disabled:opacity-50"
-                        onClick={() => handleRedeem(idx, formatETH(pos.exposureAmount))}
-                        disabled={redeemingPosition === idx || tradingLoading}
+                {positions.map((pos, idx) => {
+                  const marketValue = positionValues[idx] || 0n;
+                  const pnlData = positionPnLs[idx] || { pnl: 0n, pnlPercent: 0 };
+                  const { pnl, pnlPercent } = pnlData;
+                  const isProfit = pnl >= 0n;
+                  const isLiquidated = pnl < 0n && (-pnl) >= marketValue;
+                  
+                  return (
+                    <tr key={idx} className="border-b border-zinc-700 hover:bg-[#232323] transition">
+                      <td className="px-4 py-2 text-zinc-400">{idx}</td>
+                      <td
+                        className={`px-4 py-2 font-bold ${
+                          pos.side === Side.Long ? "text-green-400" : "text-red-400"
+                        }`}
                       >
-                        {redeemingPosition === idx ? "Redeeming..." : "Redeem"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        {pos.side === Side.Long ? "Long" : "Short"}
+                      </td>
+                      <td className="px-4 py-2 text-white">{formatETH(pos.exposureAmount)}</td>
+                      <td className="px-4 py-2 text-blue-300">{formatBasisPoints(pos.fixedRate)}</td>
+                      <td className="px-4 py-2 text-white">{formatETH(marketValue)}</td>
+                      <td className="px-4 py-2">
+                        {isLiquidated ? (
+                          <span className="text-red-600 font-bold">LIQUIDATED</span>
+                        ) : (
+                          <div className="text-sm">
+                            <div className={`font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                              {isProfit ? '+' : ''}{formatETH(pnl)} ({isProfit ? '+' : ''}{pnlPercent.toFixed(2)}%)
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              Since position creation
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <button
+                          className={`px-3 py-1 rounded-lg font-bold shadow transition ${
+                            isLiquidated 
+                              ? "bg-red-600 text-white cursor-not-allowed" 
+                              : "bg-[hsl(var(--primary))] text-black hover:scale-105"
+                          } disabled:opacity-50`}
+                          onClick={() => handleRedeem(idx, formatETH(pos.exposureAmount))}
+                          disabled={redeemingPosition === idx || tradingLoading || isLiquidated}
+                        >
+                          {isLiquidated ? "Liquidated" : redeemingPosition === idx ? "Redeeming..." : "Redeem"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -107,7 +424,7 @@ export function Positions() {
 
       {/* Active Orders Section */}
       <div className="bg-[#181818] p-6 rounded-2xl shadow-xl border border-[rgba(189,238,99,0.18)]">
-        <h2 className="text-xl font-bold text-[hsl(var(--primary))] mb-4">Active Orders</h2>
+        <h2 className="text-xl font-bold text-[hsl(var(--primary))] mb-4">Pending Orders</h2>
         
         {ordersLoading ? (
           <div className="text-center text-[hsl(var(--primary))] py-8">
