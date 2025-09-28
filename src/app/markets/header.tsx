@@ -3,19 +3,19 @@
 import { ConnectButton, darkTheme, useSwitchActiveWalletChain } from "thirdweb/react";
 import { client } from "../client";
 import { defineChain, sepolia } from "thirdweb/chains";
-import { citrea_testnet, CONTRACT_CONFIG, hedera_testnet, rootstock_testnet } from "@/lib/config";
+import { citrea_testnet, CONTRACT_CONFIG, rootstock_testnet } from "@/lib/config";
 import ChainSelector from "@/components/ChainSelector";
-import { useState } from "react";
+import { useChain } from "@/contexts/ChainContext";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function Header() {
-  const [selectedChainId, setSelectedChainId] = useState(CONTRACT_CONFIG.CHAIN_ID);
+  const { selectedChainId, setSelectedChainId } = useChain();
   const switchChain = useSwitchActiveWalletChain();
 
   const handleChainChange = (chainId: number) => {
     setSelectedChainId(chainId);
     switchChain(defineChain({ id: chainId, testnet: true }));
-    // You can add logic here to update the wallet connection or contract configuration
-    // For now, we'll just update the local state
   };
 
   return (
@@ -24,7 +24,16 @@ export default function Header() {
         <h1 className="text-3xl font-bold text-primary tracking-tight font-outfit">
           HedgX<span className="text-foreground">.</span>
         </h1>
-        <div className="hidden md:flex items-center space-x-2 text-sm">
+        <div className="hidden md:flex items-center space-x-4">
+          <Link href="/ai-tools">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="border-[hsl(var(--primary))] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))] hover:text-black transition-colors"
+            >
+              AI Tools
+            </Button>
+          </Link>
           <ChainSelector
             selectedChainId={selectedChainId}
             onChainChange={handleChainChange}
@@ -38,7 +47,7 @@ export default function Header() {
               primaryButtonBg: "hsl(var(--primary))",
             },
           })}
-          chains={[sepolia, rootstock_testnet, citrea_testnet, hedera_testnet]}
+          chains={[sepolia, rootstock_testnet, citrea_testnet]}
           connectButton={{
             label: "Connect",
             style: {

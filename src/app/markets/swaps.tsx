@@ -26,15 +26,6 @@ export function SwapCard() {
   const { marketData } = useMarketData();
   const { calculateHNPrice, calculateHNPriceWithBuffer } = useHNPrice();
   
-  // Debug: Check if functions exist
-  console.log("useHNPrice hook result:", { calculateHNPrice, calculateHNPriceWithBuffer });
-  
-  // Simple test
-  if (calculateHNPriceWithBuffer) {
-    console.log("calculateHNPriceWithBuffer function exists!");
-  } else {
-    console.error("calculateHNPriceWithBuffer function is undefined!");
-  }
   const {
     mintMarketLong,
     mintMarketShort,
@@ -45,19 +36,6 @@ export function SwapCard() {
   const account = useActiveAccount();
 
   // Test calculateHNPriceWithBuffer on component mount
-  React.useEffect(() => {
-    const testBufferFunction = async () => {
-      try {
-        console.log("Testing calculateHNPriceWithBuffer...");
-        const result = await calculateHNPriceWithBuffer("1", Side.Long, "200");
-        console.log("calculateHNPriceWithBuffer test result:", result.toString());
-      } catch (err) {
-        console.error("calculateHNPriceWithBuffer test failed:", err);
-      }
-    };
-    
-    testBufferFunction();
-  }, [calculateHNPriceWithBuffer]);
 
   // Calculate HN price and total cost when inputs change
   useEffect(() => {

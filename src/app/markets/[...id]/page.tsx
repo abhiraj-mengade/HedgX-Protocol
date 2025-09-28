@@ -2,6 +2,7 @@ import { APRChart } from "../apr-charts";
 import { OrderBooks } from "../orderbooks";
 import { Positions } from "../positions";
 import { SwapCard } from "../swaps";
+import { SettlementCountdown } from "@/components/SettlementCountdown";
 
 export default async function MarketInfo({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,11 +17,11 @@ export default async function MarketInfo({ params }: { params: Promise<{ id: str
       {/* Market Info Section */}
       <div className="bg-[#181818] rounded-2xl p-6 mb-4 border border-[rgba(189,238,99,0.18)] shadow">
         <div className="flex justify-between items-center text-white">
-          <span className="font-bold text-lg">{id}</span>
-          <span className="text-zinc-400">
+          <span className="font-bold text-lg">{id} Funding Rates</span>
+          {/* <span className="text-zinc-400">
             Matures in {marketInfo.maturesIn}{" "}
             <span className="text-zinc-500">({marketInfo.maturityDate})</span>
-          </span>
+          </span> */}
         </div>
       </div>
       <div className="flex flex-1 gap-6">
@@ -28,8 +29,9 @@ export default async function MarketInfo({ params }: { params: Promise<{ id: str
         <div className="w-full lg:w-2/3 flex flex-col">
           <APRChart />
         </div>
-        {/* Right side: Orderbook and Swap */}
+        {/* Right side: Settlement, Orderbook and Swap */}
         <div className="w-full lg:w-1/3 flex flex-col gap-6">
+          <SettlementCountdown />
           <OrderBooks />
           <SwapCard />
         </div>

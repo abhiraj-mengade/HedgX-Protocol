@@ -2,11 +2,13 @@
 import React, { useState } from "react";
 import { useUserPositions, useTrading, useOrderbookData, useHNPrice, useMarketData } from "@/hooks/useHedgXVault";
 import { readContract, prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
-import { hedgxVaultContract } from "@/lib/contract";
+import { hedgxVaultContract, getHedgXVaultContract } from "@/lib/contract";
 import { formatETH, formatBasisPoints, Side } from "@/lib/contract";
 import { useActiveAccount } from "thirdweb/react";
+import { useChain } from "@/contexts/ChainContext";
 
 export function Positions() {
+  const { selectedChainId } = useChain();
   const { positions, loading, error, refetch } = useUserPositions();
   const { limitOrders, loading: ordersLoading, error: ordersError } = useOrderbookData();
   const { redeem, loading: tradingLoading } = useTrading();
@@ -27,13 +29,14 @@ export function Positions() {
   React.useEffect(() => {
     const fetchSettlementIndices = async () => {
       try {
+        const contract = getHedgXVaultContract(selectedChainId);
         const [longIdx, shortIdx] = await Promise.all([
           (readContract as any)({
-            contract: hedgxVaultContract as any,
+            contract: contract as any,
             method: "longIndex"
           }),
           (readContract as any)({
-            contract: hedgxVaultContract as any,
+            contract: contract as any,
             method: "shortIndex"
           })
         ]);
@@ -49,7 +52,7 @@ export function Positions() {
       // Also fetch current rates for debugging
       try {
         const rates = await (readContract as any)({
-          contract: hedgxVaultContract as any,
+          contract: contract as any,
           method: "getRates"
         });
         console.log("Current rates:", {
@@ -65,7 +68,7 @@ export function Positions() {
     };
     
     fetchSettlementIndices();
-  }, []);
+  }, [selectedChainId]);
 
   // Trigger settlement
   const handleSettle = async () => {
@@ -77,8 +80,9 @@ export function Positions() {
     try {
       setIsSettling(true);
       
+      const contract = getHedgXVaultContract(selectedChainId);
       const transaction = (prepareContractCall as any)({
-        contract: hedgxVaultContract as any,
+        contract: contract as any,
         method: "settle"
       });
 
@@ -92,11 +96,11 @@ export function Positions() {
         try {
           const [longIdx, shortIdx] = await Promise.all([
             (readContract as any)({
-              contract: hedgxVaultContract as any,
+              contract: contract as any,
               method: "longIndex"
             }),
             (readContract as any)({
-              contract: hedgxVaultContract as any,
+              contract: contract as any,
               method: "shortIndex"
             })
           ]);
@@ -155,8 +159,9 @@ export function Positions() {
       // Convert percentage to basis points (e.g., 6.5% -> 650)
       const rateBps = Math.floor(parseFloat(newOracleRate) * 100);
       
+      const contract = getHedgXVaultContract(selectedChainId);
       const transaction = (prepareContractCall as any)({
-        contract: hedgxVaultContract as any,
+        contract: contract as any,
         method: "updateRate",
         params: [BigInt(rateBps)]
       });
@@ -178,9 +183,10 @@ export function Positions() {
   // Calculate PnL for a position using the contract's getPositionPnL function
   const calculatePnL = async (position: any, positionId: number, currentValue: bigint) => {
     try {
+      const contract = getHedgXVaultContract(selectedChainId);
       // Get total PnL (cumulative since position creation)
       const totalPnL = await (readContract as any)({
-        contract: hedgxVaultContract as any,
+        contract: contract as any,
         method: "getPositionPnL",
         params: [account?.address, BigInt(positionId)]
       });
@@ -219,7 +225,7 @@ export function Positions() {
       
       const newValues: { [key: number]: bigint } = {};
       const newRedeemValues: { [key: number]: bigint } = {};
-      const newPnLs: { [key: number]: { pnl: bigint, pnlPercent: number } } = {};
+      const newPnLs: { [key: number]: { pnl: bigint, pnlPercent: number, accumulated: bigint, unrealized: bigint } } = {};
       
       for (let i = 0; i < positions.length; i++) {
         try {
@@ -310,21 +316,22 @@ export function Positions() {
         <div className="bg-[#181818] p-6 rounded-2xl shadow-xl border border-[rgba(189,238,99,0.18)]">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-[hsl(var(--primary))]">Active Positions</h2>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 bg-zinc-900 px-3 py-2 rounded-lg border border-zinc-700">
+                <label className="text-xs text-zinc-400 font-medium">Oracle Rate:</label>
                 <input
                   type="number"
                   step="0.1"
                   placeholder="6.5"
                   value={newOracleRate}
                   onChange={(e) => setNewOracleRate(e.target.value)}
-                  className="w-20 px-2 py-1 text-sm bg-transparent border border-gray-600 rounded text-white"
+                  className="w-16 px-2 py-1 text-sm bg-transparent border-none text-white focus:outline-none"
                 />
-                <span className="text-sm text-gray-400">%</span>
+                <span className="text-xs text-zinc-400">%</span>
                 <button
                   onClick={handleUpdateRate}
                   disabled={isUpdatingRate || !account}
-                  className="px-3 py-1 text-sm rounded-lg bg-green-600 text-white font-bold shadow hover:scale-105 transition disabled:opacity-50"
+                  className="ml-2 px-3 py-1 text-xs rounded-md bg-[hsl(var(--primary))] text-black font-bold hover:scale-105 transition disabled:opacity-50 disabled:bg-zinc-600 disabled:text-zinc-400"
                 >
                   {isUpdatingRate ? "Updating..." : "Set Oracle"}
                 </button>
@@ -332,7 +339,7 @@ export function Positions() {
               <button
                 onClick={handleSettle}
                 disabled={isSettling || !account}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold shadow hover:scale-105 transition disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-black font-bold hover:scale-105 transition disabled:opacity-50 disabled:bg-zinc-600 disabled:text-zinc-400 shadow-lg"
               >
                 {isSettling ? "Settling..." : "Trigger Settlement"}
               </button>

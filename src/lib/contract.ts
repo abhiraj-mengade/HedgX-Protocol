@@ -1,36 +1,37 @@
 import { getContract } from "thirdweb";
 import { client } from "@/app/client";
-import { CONTRACT_CONFIG, getRpcUrl } from "./config";
+import { CONTRACT_CONFIG, getRpcUrl, getContractAddress } from "./config";
 import contractAbi from "./contract.abi.json";
 
-// Contract instance with error handling
-let hedgxVaultContract: any;
-
-try {
-  hedgxVaultContract = getContract({
-    client,
-    chain: {
-      id: CONTRACT_CONFIG.CHAIN_ID,
-      rpc: getRpcUrl(CONTRACT_CONFIG.CHAIN_ID),
-    },
-    address: CONTRACT_CONFIG.HEDGX_VAULT_ADDRESS,
-    abi: contractAbi as any,
-  });
-} catch (error) {
-  console.error("Failed to initialize contract:", error);
-  // Create a fallback contract instance
-  hedgxVaultContract = getContract({
-    client,
-    chain: {
-      id: CONTRACT_CONFIG.CHAIN_ID,
-      rpc: getRpcUrl(CONTRACT_CONFIG.CHAIN_ID),
-    },
-    address: "0x0000000000000000000000000000000000000000", // Zero address as fallback
-    abi: [] as any, // Empty ABI as fallback
-  });
+// Function to get contract instance for specific chain
+export function getHedgXVaultContract(chainId: number) {
+  try {
+    return getContract({
+      client,
+      chain: {
+        id: chainId,
+        rpc: getRpcUrl(chainId),
+      },
+      address: getContractAddress(chainId),
+      abi: contractAbi as any,
+    });
+  } catch (error) {
+    console.error(`Failed to initialize contract for chain ${chainId}:`, error);
+    // Create a fallback contract instance
+    return getContract({
+      client,
+      chain: {
+        id: chainId,
+        rpc: getRpcUrl(chainId),
+      },
+      address: "0x0000000000000000000000000000000000000000", // Zero address as fallback
+      abi: [] as any, // Empty ABI as fallback
+    });
+  }
 }
 
-export { hedgxVaultContract };
+// Default contract instance (Sepolia)
+export const hedgxVaultContract = getHedgXVaultContract(CONTRACT_CONFIG.CHAIN_ID);
 
 // Contract constants
 export const BASIS_POINTS = CONTRACT_CONFIG.BASIS_POINTS;

@@ -2,9 +2,12 @@ import { defineChain } from "thirdweb";
 
 // Contract configuration
 export const CONTRACT_CONFIG = {
-  // Update this with your deployed contract address
-  HEDGX_VAULT_ADDRESS:
-    process.env.NEXT_PUBLIC_HEDGX_VAULT_ADDRESS || "0x0000000000000000000000000000000000000000",
+  // Contract addresses per network
+  HEDGX_VAULT_ADDRESSES: {
+    11155111: process.env.NEXT_PUBLIC_HEDGX_VAULT_ADDRESS || "0x0000000000000000000000000000000000000000", // Sepolia
+    5115: process.env.NEXT_PUBLIC_HEDGX_VAULT_ADDRESS_CITREA || "0x0000000000000000000000000000000000000000", // Citrea
+    31: process.env.NEXT_PUBLIC_HEDGX_VAULT_ADDRESS_RS || "0x0000000000000000000000000000000000000000", // Rootstock
+  },
 
   // Chain configuration - Default to Sepolia testnet
   CHAIN_ID: parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111"), // Default to Sepolia testnet
@@ -14,7 +17,6 @@ export const CONTRACT_CONFIG = {
     1: "https://eth.llamarpc.com", // Ethereum mainnet
     11155111: "https://ethereum-sepolia-rpc.publicnode.com", // Sepolia testnet
     31: "https://public-node.testnet.rsk.co", // Rootstock Testnet
-    296: "https://testnet.hashio.io/api", // Hedera Testnet
     5115: "https://rpc.testnet.citrea.xyz", // Citrea Testnet
     31337: "http://localhost:8545", // Local development
   },
@@ -29,8 +31,12 @@ export const CONTRACT_CONFIG = {
 
 // Environment validation
 export function validateConfig() {
-  if (CONTRACT_CONFIG.HEDGX_VAULT_ADDRESS === "0x0000000000000000000000000000000000000000") {
-    console.warn("⚠️  HedgXVault contract address not set. Please update NEXT_PUBLIC_HEDGX_VAULT_ADDRESS in your environment variables.");
+  const hasValidAddress = Object.values(CONTRACT_CONFIG.HEDGX_VAULT_ADDRESSES).some(
+    address => address !== "0x0000000000000000000000000000000000000000"
+  );
+  
+  if (!hasValidAddress) {
+    console.warn("⚠️  HedgXVault contract addresses not set. Please update NEXT_PUBLIC_HEDGX_VAULT_ADDRESS, NEXT_PUBLIC_HEDGX_VAULT_ADDRESS_CITREA, and NEXT_PUBLIC_HEDGX_VAULT_ADDRESS_RS in your environment variables.");
   }
 
   if (!process.env.NEXT_PUBLIC_TEMPLATE_CLIENT_ID) {
@@ -43,6 +49,10 @@ export function getRpcUrl(chainId: number): string {
   return CONTRACT_CONFIG.RPC_URLS[chainId as keyof typeof CONTRACT_CONFIG.RPC_URLS] || CONTRACT_CONFIG.RPC_URLS[1];
 }
 
+// Helper function to get contract address for specific chain
+export function getContractAddress(chainId: number): string {
+  return CONTRACT_CONFIG.HEDGX_VAULT_ADDRESSES[chainId as keyof typeof CONTRACT_CONFIG.HEDGX_VAULT_ADDRESSES] || CONTRACT_CONFIG.HEDGX_VAULT_ADDRESSES[11155111];
+}
+
 export const rootstock_testnet = defineChain({ id: 31, testnet: true });
 export const citrea_testnet = defineChain({ id: 5115, rpc: "https://rpc.testnet.citrea.xyz", name: "Citrea Testnet", nativeCurrency: { name: "cBTC", symbol: "cBTC", decimals: 18 }, blockExplorers: [{ name: "Citrea Explorer", url: "https://explorer.citrea.xyz" }], testnet: true });
-export const hedera_testnet = defineChain({ id: 296, testnet: true });

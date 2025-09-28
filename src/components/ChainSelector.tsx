@@ -33,13 +33,6 @@ const CHAINS: Chain[] = [
     rpcUrl: "https://public-node.testnet.rsk.co",
     color: "orange",
   },
-  {
-    id: 296, // Hedera Testnet chain ID
-    name: "Hedera Testnet",
-    shortName: "Hedera",
-    rpcUrl: "https://testnet.hashio.io/api", 
-    color: "purple",
-  },
 ];
 
 interface ChainSelectorProps {
@@ -60,8 +53,6 @@ export default function ChainSelector({ selectedChainId, onChainChange }: ChainS
         return "bg-blue-500/20 text-blue-400 border-blue-500/30";
       case "orange":
         return "bg-orange-500/20 text-orange-400 border-orange-500/30";
-      case "purple":
-        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
       default:
         return "bg-green-500/20 text-green-400 border-green-500/30";
     }
@@ -105,7 +96,7 @@ export default function ChainSelector({ selectedChainId, onChainChange }: ChainS
                     chain.color === 'green' ? 'bg-green-400' :
                     chain.color === 'blue' ? 'bg-blue-400' :
                     chain.color === 'orange' ? 'bg-orange-400' :
-                    'bg-purple-400'
+                    'bg-green-400'
                   }`} />
                   <span>{chain.name}</span>
                 </div>

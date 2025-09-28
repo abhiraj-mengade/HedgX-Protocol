@@ -10,6 +10,7 @@ import {
 } from "thirdweb";
 import { 
   hedgxVaultContract, 
+  getHedgXVaultContract,
   formatBasisPoints, 
   formatETH, 
   parseETH,
@@ -20,11 +21,13 @@ import {
   type MarketData,
   type OrderbookData
 } from "@/lib/contract";
+import { useChain } from "@/contexts/ChainContext";
 import { useActiveAccount } from "thirdweb/react";
 import { ethers } from 'ethers';
 
 // Hook for market data
 export function useMarketData() {
+  const { selectedChainId } = useChain();
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,12 +37,15 @@ export function useMarketData() {
       setLoading(true);
       setError(null);
 
+      const contract = getHedgXVaultContract(selectedChainId);
+      
       console.log("Fetching market data...");
-      console.log("Contract address:", hedgxVaultContract?.address);
-      console.log("Contract ABI length:", hedgxVaultContract?.abi?.length);
+      console.log("Selected chain ID:", selectedChainId);
+      console.log("Contract address:", contract?.address);
+      console.log("Contract ABI length:", contract?.abi?.length);
 
       // Check if contract is properly initialized
-      if (!hedgxVaultContract || hedgxVaultContract.address === "0x0000000000000000000000000000000000000000") {
+      if (!contract || contract.address === "0x0000000000000000000000000000000000000000") {
         console.warn("Contract not properly initialized. Using mock data for development.");
         // Return mock data for development
         setMarketData({
@@ -73,22 +79,22 @@ export function useMarketData() {
         vaultLiquidity,
         vaultTradingEnabled
       ] = await Promise.all([
-        (readContract as any)({ contract: hedgxVaultContract, method: "currentCycleId" }),
-        (readContract as any)({ contract: hedgxVaultContract, method: "cycleStart" }),
-        (readContract as any)({ contract: hedgxVaultContract, method: "cycleEnd" }),
-        (readContract as any)({ contract: hedgxVaultContract, method: "currentEpoch" }),
-        (readContract as any)({ contract: hedgxVaultContract, method: "totalEpochs" }),
-        (readContract as any)({ contract: hedgxVaultContract, method: "currentFundingRateBps" }),
-        (readContract as any)({ contract: hedgxVaultContract, method: "getImpliedRate" }),
-        (readContract as any)({ contract: hedgxVaultContract, method: "vaultLiquidity" }),
-        (readContract as any)({ contract: hedgxVaultContract, method: "vaultTradingEnabled" })
+        (readContract as any)({ contract: contract, method: "currentCycleId" }),
+        (readContract as any)({ contract: contract, method: "cycleStart" }),
+        (readContract as any)({ contract: contract, method: "cycleEnd" }),
+        (readContract as any)({ contract: contract, method: "currentEpoch" }),
+        (readContract as any)({ contract: contract, method: "totalEpochs" }),
+        (readContract as any)({ contract: contract, method: "currentFundingRateBps" }),
+        (readContract as any)({ contract: contract, method: "getImpliedRate" }),
+        (readContract as any)({ contract: contract, method: "vaultLiquidity" }),
+        (readContract as any)({ contract: contract, method: "vaultTradingEnabled" })
       ]);
 
       // Get indices separately to avoid too many requests
       console.log("Fetching funding indices...");
       const [longIndex, shortIndex] = await Promise.all([
-        (readContract as any)({ contract: hedgxVaultContract, method: "longIndex" }),
-        (readContract as any)({ contract: hedgxVaultContract, method: "shortIndex" })
+        (readContract as any)({ contract: contract, method: "longIndex" }),
+        (readContract as any)({ contract: contract, method: "shortIndex" })
       ]);
 
       setMarketData({
@@ -131,7 +137,7 @@ export function useMarketData() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedChainId]);
 
   useEffect(() => {
     fetchMarketData();
@@ -254,6 +260,7 @@ export function useEthPrice() {
 
 // Hook for user positions
 export function useUserPositions() {
+  const { selectedChainId } = useChain();
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -270,8 +277,10 @@ export function useUserPositions() {
       setLoading(true);
       setError(null);
 
+      const contract = getHedgXVaultContract(selectedChainId);
+
       const nextPositionId = await (readContract as any)({
-        contract: hedgxVaultContract,
+        contract: contract,
         method: "nextPositionId",
         params: [account.address]
       });
@@ -280,7 +289,7 @@ export function useUserPositions() {
       for (let i = 0; i < Number(nextPositionId); i++) {
         positionPromises.push(
           (readContract as any)({
-            contract: hedgxVaultContract as any,
+            contract: contract as any,
             method: "getPosition",
             params: [account.address, BigInt(i)]
           })
@@ -296,7 +305,7 @@ export function useUserPositions() {
     } finally {
       setLoading(false);
     }
-  }, [account?.address]);
+  }, [account?.address, selectedChainId]);
 
   useEffect(() => {
     fetchPositions();
@@ -307,6 +316,7 @@ export function useUserPositions() {
 
 // Hook for orderbook data
 export function useOrderbookData() {
+  const { selectedChainId } = useChain();
   const [orderbookData, setOrderbookData] = useState<OrderbookData | null>(null);
   const [limitOrders, setLimitOrders] = useState<LimitOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -317,9 +327,11 @@ export function useOrderbookData() {
       setLoading(true);
       setError(null);
 
+      const contract = getHedgXVaultContract(selectedChainId);
+
       // Get orderbook status and best rates
       const [longOrders, shortOrders, longWeightedRate, shortWeightedRate] = await (readContract as any)({
-        contract: hedgxVaultContract as any,
+        contract: contract as any,
         method: "getOrderbookStatus"
       });
 
@@ -330,14 +342,14 @@ export function useOrderbookData() {
 
       try {
         const [bestLong, bestShort] = await (readContract as any)({
-          contract: hedgxVaultContract as any,
+          contract: contract as any,
           method: "getBestTwoOrders"
         });
         bestLongRate = bestLong;
         bestShortRate = bestShort;
 
         const spreadResult = await (readContract as any)({
-          contract: hedgxVaultContract as any,
+          contract: contract as any,
           method: "getSpread"
         });
         spread = spreadResult;
@@ -407,7 +419,7 @@ export function useOrderbookData() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedChainId]);
 
   useEffect(() => {
     fetchOrderbookData();
@@ -421,6 +433,7 @@ export function useOrderbookData() {
 
 // Hook for trading operations
 export function useTrading() {
+  const { selectedChainId } = useChain();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const account = useActiveAccount();
@@ -432,8 +445,9 @@ export function useTrading() {
       setLoading(true);
       setError(null);
 
+      const contract = getHedgXVaultContract(selectedChainId);
       const transaction = (prepareContractCall as any)({
-        contract: hedgxVaultContract,
+        contract: contract,
         method: "mintMarketLong",
         params: [parseETH(exposureAmount)],
         value: parseETH(value)
@@ -450,7 +464,7 @@ export function useTrading() {
     } finally {
       setLoading(false);
     }
-  }, [account]);
+  }, [account, selectedChainId]);
 
   const mintMarketShort = useCallback(async (exposureAmount: string, value: string) => {
     if (!account) throw new Error("No account connected");
@@ -477,7 +491,7 @@ export function useTrading() {
     } finally {
       setLoading(false);
     }
-  }, [account]);
+  }, [account, selectedChainId]);
 
   const mintLimitLong = useCallback(async (exposureAmount: string, limitBps: string, value: string) => {
     if (!account) throw new Error("No account connected");
@@ -504,7 +518,7 @@ export function useTrading() {
     } finally {
       setLoading(false);
     }
-  }, [account]);
+  }, [account, selectedChainId]);
 
   const mintLimitShort = useCallback(async (exposureAmount: string, limitBps: string, value: string) => {
     if (!account) throw new Error("No account connected");
@@ -531,7 +545,7 @@ export function useTrading() {
     } finally {
       setLoading(false);
     }
-  }, [account]);
+  }, [account, selectedChainId]);
 
   const redeem = useCallback(async (positionId: number, amountHN: string) => {
     if (!account) throw new Error("No account connected");
@@ -557,7 +571,7 @@ export function useTrading() {
     } finally {
       setLoading(false);
     }
-  }, [account]);
+  }, [account, selectedChainId]);
 
   const addVaultLiquidity = useCallback(async (amount: string) => {
     if (!account) throw new Error("No account connected");
@@ -583,7 +597,7 @@ export function useTrading() {
     } finally {
       setLoading(false);
     }
-  }, [account]);
+  }, [account, selectedChainId]);
 
   return {
     loading,
