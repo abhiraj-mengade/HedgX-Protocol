@@ -1,6 +1,10 @@
 # HedgX Protocol
+<img width="1158" height="573" alt="Screenshot 2025-09-28 at 9 07 22 AM" src="https://github.com/user-attachments/assets/68c4faa7-0f8f-4c46-bf91-f14731cfff0f" />
 
-> **Decentralized funding rate derivatives with AI-powered forecasting and cross-chain hedging strategies**
+> **Decentralized rates derivatives with AI-powered forecasting and cross-chain hedging strategies**
+
+HedgX is a rates trading DeFi protocol. Here, users can trade Perps funding rates and yield rates.
+
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20App-blue?style=for-the-badge&logo=ethereum)](https://hedgx-protocol.vercel.app)
 [![Contract - Rootstock](https://img.shields.io/badge/Contract-Rootstock%20Testnet-green?style=for-the-badge&logo=bitcoin)](https://rootstock-testnet.blockscout.com/address/0x1Cb428080f2CD2C64f260eEd4DD9A04e274F3fCE?tab=contract)
