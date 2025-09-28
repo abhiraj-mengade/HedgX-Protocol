@@ -1,8 +1,10 @@
 "use client";
 import { useOrderbookData, useMarketData } from "@/hooks/useHedgXVault";
 import { formatBasisPoints, formatETH } from "@/lib/contract";
+import { useMarket } from "@/contexts/MarketContext";
 
 export function OrderBooks() {
+  const { formatCurrency } = useMarket();
   const { orderbookData, limitOrders, loading, error } = useOrderbookData();
   const { marketData } = useMarketData();
 
@@ -52,7 +54,7 @@ export function OrderBooks() {
     const levels = Object.entries(rateGroups)
       .map(([rate, amount]) => ({
         rate: formatBasisPoints(BigInt(rate)),
-        size: formatETH(amount)
+        size: formatCurrency(amount)
       }))
       .sort((a, b) => {
         const rateA = parseFloat(a.rate.replace('%', ''));
@@ -95,11 +97,11 @@ export function OrderBooks() {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="text-center">
               <div className="text-zinc-400">Total Long Orders</div>
-              <div className="text-green-300 font-bold">{formatETH(orderbookData.longOrders)}</div>
+              <div className="text-green-300 font-bold">{formatCurrency(orderbookData.longOrders)}</div>
             </div>
             <div className="text-center">
               <div className="text-zinc-400">Total Short Orders</div>
-              <div className="text-red-300 font-bold">{formatETH(orderbookData.shortOrders)}</div>
+              <div className="text-red-300 font-bold">{formatCurrency(orderbookData.shortOrders)}</div>
             </div>
             <div className="text-center">
               <div className="text-zinc-400">Implied Rate</div>

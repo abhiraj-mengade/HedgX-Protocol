@@ -28,7 +28,7 @@ const ratesChartConfig = {
 
 const ethChartConfig = {
   ethPrice: {
-    label: "ETH Price",
+    label: "BTC Price",
     color: "#f59e0b", // amber-500
   },
 } satisfies ChartConfig;
@@ -124,7 +124,7 @@ export function APRChart() {
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
-            ETH Price
+            BTC Price
           </button>
         </div>
 

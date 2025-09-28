@@ -12,8 +12,10 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import { useTrading, useMarketData, useHNPrice } from "@/hooks/useHedgXVault";
 import { useActiveAccount } from "thirdweb/react";
 import { Side, formatETH, formatETHValue, formatBasisPoints, parseETH } from "@/lib/contract";
+import { useMarket } from "@/contexts/MarketContext";
 
 export function SwapCard() {
+  const { formatCurrency, getCurrencySymbol } = useMarket();
   const [activeTab, setActiveTab] = useState("market");
   const [isLong, setIsLong] = useState(true);
   const [notionalSize, setNotionalSize] = useState("");
@@ -249,7 +251,7 @@ export function SwapCard() {
             <input
               type="number"
               step="0.001"
-              placeholder="Exposure Amount (ETH)"
+              placeholder={`Exposure Amount (${getCurrencySymbol()})`}
               value={notionalSize}
               onChange={(e) => setNotionalSize(e.target.value)}
               className="w-full p-3 bg-[rgba(0,0,0,0.4)] backdrop-blur-sm text-[hsl(var(--foreground))] rounded-lg border border-[rgba(189,238,99,0.2)] focus:outline-none focus:border-[hsl(var(--primary))] font-semibold placeholder:text-[hsl(var(--muted-foreground))] transition-all duration-200"
@@ -273,9 +275,9 @@ export function SwapCard() {
                 Cost Breakdown:
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[hsl(var(--muted-foreground))]">Rate Premium</span>
+                <span className="text-[hsl(var(--muted-foreground))]">HN Price</span>
                 <span className="text-[hsl(var(--foreground))] font-bold">
-                  {formatETH(hnPrice)}
+                  {formatCurrency(hnPrice)}
                 </span>
               </div>
               <div className="flex justify-between text-sm font-bold border-t border-[rgba(189,238,99,0.2)] pt-3 mt-3">
@@ -289,7 +291,7 @@ export function SwapCard() {
                   className="text-[hsl(var(--primary))]"
                   style={{ textShadow: "0px 0px 12px hsl(var(--primary))" }}
                 >
-                  {formatETH(totalCost)}
+                  {formatCurrency(totalCost)}
                 </span>
               </div>
             </div>

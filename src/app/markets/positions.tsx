@@ -3,12 +3,14 @@ import React, { useState } from "react";
 import { useUserPositions, useTrading, useOrderbookData, useHNPrice, useMarketData } from "@/hooks/useHedgXVault";
 import { readContract, prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
 import { hedgxVaultContract, getHedgXVaultContract } from "@/lib/contract";
-import { formatETH, formatBasisPoints, Side } from "@/lib/contract";
+import { formatETH, formatETHValue, formatBasisPoints, Side } from "@/lib/contract";
 import { useActiveAccount } from "thirdweb/react";
 import { useChain } from "@/contexts/ChainContext";
+import { useMarket } from "@/contexts/MarketContext";
 
 export function Positions() {
   const { selectedChainId } = useChain();
+  const { formatCurrency } = useMarket();
   const { positions, loading, error, refetch } = useUserPositions();
   const { limitOrders, loading: ordersLoading, error: ordersError } = useOrderbookData();
   const { redeem, loading: tradingLoading } = useTrading();
@@ -233,14 +235,14 @@ export function Positions() {
           
           // Market value: Use current implied rate (0) to get current market value
           const marketValue = await calculateHNPriceWithBuffer(
-            formatETH(position.exposureAmount),
+            formatETHValue(position.exposureAmount),
             position.side,
             "0" // Use 0 for current implied rate
           );
           
           // Redeem value: Use current market rate (same as market value)
           const redeemValue = await calculateHNPriceWithBuffer(
-            formatETH(position.exposureAmount),
+            formatETHValue(position.exposureAmount),
             position.side,
             "0" // Use 0 for current implied rate (market value)
           );
@@ -249,13 +251,13 @@ export function Positions() {
           const pnlData = await calculatePnL(position, i, marketValue);
           
           console.log(`Position ${i} calculations:`, {
-            exposureAmount: formatETH(position.exposureAmount),
+            exposureAmount: formatCurrency(position.exposureAmount),
             side: position.side === Side.Long ? "Long" : "Short",
             fixedRate: position.fixedRate.toString(),
             currentImpliedRate: marketData?.impliedRate?.toString() || "unknown",
-            marketValue: formatETH(marketValue),
-            redeemValue: formatETH(redeemValue),
-            pnl: formatETH(pnlData.pnl),
+            marketValue: formatCurrency(marketValue),
+            redeemValue: formatCurrency(redeemValue),
+            pnl: formatCurrency(pnlData.pnl),
             pnlPercent: pnlData.pnlPercent.toFixed(2) + "%"
           });
           
@@ -390,16 +392,16 @@ export function Positions() {
                       >
                         {pos.side === Side.Long ? "Long" : "Short"}
                       </td>
-                      <td className="px-4 py-2 text-white">{formatETH(pos.exposureAmount)}</td>
+                      <td className="px-4 py-2 text-white">{formatCurrency(pos.exposureAmount)}</td>
                       <td className="px-4 py-2 text-blue-300">{formatBasisPoints(pos.fixedRate)}</td>
-                      <td className="px-4 py-2 text-white">{formatETH(marketValue)}</td>
+                      <td className="px-4 py-2 text-white">{formatCurrency(marketValue)}</td>
                       <td className="px-4 py-2">
                         {isLiquidated ? (
                           <span className="text-red-600 font-bold">LIQUIDATED</span>
                         ) : (
                           <div className="text-sm">
                             <div className={`font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
-                              {isProfit ? '+' : ''}{formatETH(pnl)} ({isProfit ? '+' : ''}{pnlPercent.toFixed(2)}%)
+                              {isProfit ? '+' : ''}{formatCurrency(pnl)} ({isProfit ? '+' : ''}{pnlPercent.toFixed(2)}%)
                             </div>
                             <div className="text-xs text-gray-400 mt-1">
                               Since position creation
@@ -414,7 +416,7 @@ export function Positions() {
                               ? "bg-red-600 text-white cursor-not-allowed" 
                               : "bg-[hsl(var(--primary))] text-black hover:scale-105"
                           } disabled:opacity-50`}
-                          onClick={() => handleRedeem(idx, formatETH(pos.exposureAmount))}
+                          onClick={() => handleRedeem(idx, formatETHValue(pos.exposureAmount))}
                           disabled={redeemingPosition === idx || tradingLoading || isLiquidated}
                         >
                           {isLiquidated ? "Liquidated" : redeemingPosition === idx ? "Redeeming..." : "Redeem"}
@@ -468,7 +470,7 @@ export function Positions() {
                     >
                       {order.side === 0 ? "Long" : "Short"}
                     </td>
-                    <td className="px-4 py-2 text-white">{formatETH(order.amount)}</td>
+                    <td className="px-4 py-2 text-white">{formatCurrency(order.amount)}</td>
                     <td className="px-4 py-2 text-blue-300">{formatBasisPoints(order.rate)}</td>
                     <td className="px-4 py-2">
                       <span className={`px-2 py-1 rounded text-xs font-bold ${

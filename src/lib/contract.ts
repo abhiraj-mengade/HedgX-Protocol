@@ -50,6 +50,10 @@ export const formatToken = (wei: bigint): string => {
   return (Number(wei) / 1e18).toFixed(4) + " Token";
 };
 
+export const formatBTC = (wei: bigint): string => {
+  return (Number(wei) / 1e18).toFixed(4) + " BTC";
+};
+
 export const formatETHValue = (wei: bigint): string => {
   return (Number(wei) / 1e18).toFixed(4);
 };

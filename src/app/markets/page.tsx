@@ -22,12 +22,17 @@ export default function Markets() {
   const { marketData, loading, error } = useMarketData();
   const [markets, setMarkets] = useState<Market[]>([]);
 
+  // Format market ID for display (BTC-USDT -> BTC/USDT)
+  const formatMarketDisplay = (marketId: string) => {
+    return marketId.replace('-', '/');
+  };
+
   useEffect(() => {
     if (marketData) {
-      // Create ETH market data from contract
-      const ethMarket: Market = {
-        type: "ETH Collateral",
-        id: "ETH-USDT",
+      // Create BTC market data from contract (live data)
+      const btcMarket: Market = {
+        type: "BTC Collateral",
+        id: "BTC-USDT",
         maturity: formatTimeRemaining(marketData.cycleEnd),
         implied_apr: formatBasisPoints(marketData.impliedRate),
         underlying_apr: formatBasisPoints(marketData.currentFundingRateBps),
@@ -36,7 +41,41 @@ export default function Markets() {
         long_short_rate_roi: `${formatBasisPoints(marketData.impliedRate)} implied rate`,
       };
 
-      setMarkets([ethMarket]);
+      // Create additional mock markets with varied data
+      const ethMarket: Market = {
+        type: "ETH Collateral",
+        id: "ETH-USDT",
+        maturity: "18 days",
+        implied_apr: "12.45%",
+        underlying_apr: "11.20%",
+        volume: "2.8500 ETH",
+        notional_ol: "14.2500 ETH",
+        long_short_rate_roi: "12.45% implied rate",
+      };
+
+      const solMarket: Market = {
+        type: "SOL Collateral",
+        id: "SOL-USDT",
+        maturity: "22 days",
+        implied_apr: "18.75%",
+        underlying_apr: "17.30%",
+        volume: "1.9200 ETH",
+        notional_ol: "9.6000 ETH",
+        long_short_rate_roi: "18.75% implied rate",
+      };
+
+      const dotMarket: Market = {
+        type: "DOT Collateral",
+        id: "DOT-USDT",
+        maturity: "15 days",
+        implied_apr: "9.85%",
+        underlying_apr: "8.60%",
+        volume: "3.1800 ETH",
+        notional_ol: "15.9000 ETH",
+        long_short_rate_roi: "9.85% implied rate",
+      };
+
+      setMarkets([btcMarket, ethMarket, solMarket, dotMarket]);
     }
   }, [marketData]);
 
@@ -69,7 +108,7 @@ export default function Markets() {
         href={`/markets/${market.id}`}
         className="text-[hsl(var(--foreground))] hover:underline"
       >
-        {market.id}
+        {formatMarketDisplay(market.id)}
       </Link>
       <p>Maturity: {market.maturity}</p>
       <p>Implied APR: {market.implied_apr}</p>
@@ -95,7 +134,7 @@ export default function Markets() {
         href={`/markets/${market.id}`}
         className="text-[hsl(var(--foreground))] hover:underline"
       >
-        {market.id}
+        {formatMarketDisplay(market.id)}
       </Link>
       <p>Maturity: {market.maturity}</p>
       <p>Implied APR: {market.implied_apr}</p>
@@ -158,8 +197,20 @@ export default function Markets() {
             </h2>
             <div className="hidden md:grid grid-cols-1 gap-2">
               <CollateralTable
+                title="BTC Collateral"
+                markets={markets.filter((market) => market.type === "BTC Collateral")}
+              />
+              <CollateralTable
                 title="ETH Collateral"
                 markets={markets.filter((market) => market.type === "ETH Collateral")}
+              />
+              <CollateralTable
+                title="SOL Collateral"
+                markets={markets.filter((market) => market.type === "SOL Collateral")}
+              />
+              <CollateralTable
+                title="DOT Collateral"
+                markets={markets.filter((market) => market.type === "DOT Collateral")}
               />
             </div>
             <div className="grid grid-cols-1 gap-2 md:hidden">
