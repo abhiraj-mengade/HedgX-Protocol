@@ -20,7 +20,7 @@ HedgX Protocol is a cutting-edge decentralized derivatives platform that enables
 - **🤖 AI-Powered Forecasting**: Real-time rate predictions using 0G Compute Network
 - **💎 No-Collateral System**: Capital-efficient trading without collateral requirements
 - **📊 Dynamic Orderbook**: Real-time limit and market orders with spread calculation
-- **⏰ Automated Settlement**: 8-hour epoch-based settlements with PnL accumulation
+- **⏰ Automated Settlement**: 8/4 hour epoch-based settlements with PnL accumulation
 - **🔮 Oracle Integration**: Decentralized rate updates for accurate pricing
 - **🎯 Smart Hedging**: AI-optimized hedging strategies for risk management
 
